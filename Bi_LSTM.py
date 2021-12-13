@@ -9,10 +9,10 @@ class Bi_LSTM(nn.Module):
             hidden_size,            # h_dim
             batch_size):           
         super().__init__()
-        # fw & bw use different cells
         self.batch_size = batch_size
         self.input_size = input_size
         self.hidden_size = hidden_size
+        # fw & bw use different cells
         self.lstmCell_fw = nn.LSTMCell(input_size=input_size, hidden_size=hidden_size, bias=False)
         self.lstmCell_bw = nn.LSTMCell(input_size=input_size, hidden_size=hidden_size, bias=False)
         return

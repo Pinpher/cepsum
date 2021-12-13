@@ -50,6 +50,5 @@ class MyDataset(Dataset):
     
     def embed(self, sentence):
         wordIndices = [self.wordToIndex[word] for word in sentence.split()]
-        vectors = [self.embedding(torch.IntTensor([i])) for i in wordIndices]
-        return torch.stack(vectors)
+        return self.embedding(torch.IntTensor(wordIndices))
 

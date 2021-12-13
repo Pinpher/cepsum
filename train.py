@@ -1,7 +1,7 @@
 from torch.nn.functional import embedding
 from torch.utils.data import DataLoader
 from mydataset import *
-from Bi_LSTM import *
+from bi_lstm import *
 
 data = MyDataset("data/cut_valid.txt")
 dataloader = DataLoader(data, batch_size=32, collate_fn=collate_fn)
@@ -31,10 +31,10 @@ def main():
         #                         embedd_dim)
 
         #reshape & padding
-        key_batch = [torch.stack([j for i in batch_data[0][l] for j in i]).squeeze(1) for l in range(batch_size)]
-        value_batch = [torch.stack([j for i in batch_data[1][l] for j in i]).squeeze(1) for l in range(batch_size)]
-        src_batch = [i.squeeze(1) for i in batch_data[2]]
-        tgt_batch = [i.squeeze(1) for i in batch_data[3]]
+        key_batch = [torch.cat(i) for i in batch_data[0]]
+        value_batch = [torch.cat(i) for i in batch_data[0]]
+        src_batch = batch_data[2]
+        tgt_batch = batch_data[3]
 
         model1 = Bi_LSTM(input_size=embed_dim, hidden_size=128, batch_size=batch_size)
         key_h = model1(padding(key_batch))
