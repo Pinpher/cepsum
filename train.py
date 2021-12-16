@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from torch.utils.data import DataLoader
 from myvocabulary import *
 from myembedding import *
@@ -10,6 +11,8 @@ batch_size = 32
 embed_dim = 300
 hidden_size = 128
 candidate_size = 1292610
+learning_rate = 1e-3
+epoch_num = 20
 
 #embedding = MyEmbedding()
 #vocabulary = Myvocabulary()
@@ -27,10 +30,19 @@ def main():
         device = device
     )
     model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0)
 
-    for i_batch, batch_data in enumerate(dataloader):
-        loss = model(batch_data)
-        break
+    for epoch in range(1, epoch_num + 1):
+        losses = []
+        for i_batch, batch_data in enumerate(dataloader):
+            optimizer.zero_grad()
+            loss = model(batch_data)
+            loss.backward()
+            optimizer.step()
+            losses.append(loss.tolist())
+
+            if (i_batch + 1) % 100 == 0:
+                print("Epoch %d Batch %d, train loss %f" % (epoch, i_batch, np.mean(losses[-100:])))
     
 if __name__ == "__main__":
     main()
