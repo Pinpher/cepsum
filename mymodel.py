@@ -68,4 +68,5 @@ class Mymodel(nn.Module):
             # Loss
             index = t_indices[t - 1]                                    # (batch_size) list
             loss += -(torch.log(torch.stack([p_g[i][index[i]] for i in range(self.batch_size)]))) / max_tgt_len     # fking ugly (batch_size)
-        return loss
+        
+        return loss.mean()
