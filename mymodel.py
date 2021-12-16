@@ -4,12 +4,13 @@ import torch.nn.functional as F
 from myembedding import *
 
 class Mymodel(nn.Module):
-    def __init__(self, batch_size, embed_dim, hidden_size, candidate_size):
+    def __init__(self, batch_size, embed_dim, hidden_size, candidate_size, device):
         super().__init__()
         self.batch_size = batch_size
         self.embed_dim = embed_dim
         self.hidden_size = hidden_size
         self.candidate_size = candidate_size
+        self.device = device
 
         self.embedding = MyEmbedding()
 
@@ -27,6 +28,7 @@ class Mymodel(nn.Module):
         return
 
     def forward(self, batch_data):
+        print('start forward')
         # batch_data[0]: (batch_size, num_keys,   num_words_in_key)
         # batch_data[1]: (batch_size, num_values, num_words_in_value)
         # batch_data[2]: (batch_size,             num_words_in_src)
@@ -40,21 +42,23 @@ class Mymodel(nn.Module):
         k_embedding, k_mask, _ = self.embedding.embed(key_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         v_embedding, v_mask, _ = self.embedding.embed(value_batch)  # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         s_embedding, s_mask, _ = self.embedding.embed(src_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
+        s_mask = s_mask.to(self.device)
 
         t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)  
 
         # Encode
-        h_k, _ = self.k_encoder(k_embedding)     # (max_length, batch_size, hidden_size * 2)
-        h_v, _ = self.v_encoder(v_embedding)     # (max_length, batch_size, hidden_size * 2)
-        h_s, _ = self.s_encoder(s_embedding)     # (max_length, batch_size, hidden_size * 2)
+        h_k, _ = self.k_encoder(k_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
+        h_v, _ = self.v_encoder(v_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
+        h_s, _ = self.s_encoder(s_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
 
         # Decode & Generate & Loss
         hidden_states = []
-        loss = torch.zeros(self.batch_size)
-        s = torch.zeros(self.batch_size, self.hidden_size) # s_0
-        y = torch.zeros(self.batch_size, self.hidden_size) # y_0
+        loss = torch.zeros(self.batch_size).to(self.device)
+        s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
+        y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
         max_tgt_len = max(len(words) for words in tgt_batch)
         for t in range(1, max_tgt_len + 1):
+            print('starting' + str(t))
             # Decede
             alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(s))) for h_i in h_s] # (max_length, batch_size, 1)
             alpha = F.softmax(torch.stack(alpha) * s_mask, dim=0)       # (max_length, batch_size, 1)
@@ -66,5 +70,4 @@ class Mymodel(nn.Module):
             # Loss
             index = t_indices[t - 1]                                    # (batch_size) list
             loss += -(torch.log(torch.stack([p_g[i][index[i]] for i in range(self.batch_size)]))) / max_tgt_len     # fking ugly (batch_size)
-            print(t)
         return loss
