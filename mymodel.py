@@ -28,7 +28,6 @@ class Mymodel(nn.Module):
         return
 
     def forward(self, batch_data):
-        print('start forward')
         # batch_data[0]: (batch_size, num_keys,   num_words_in_key)
         # batch_data[1]: (batch_size, num_values, num_words_in_value)
         # batch_data[2]: (batch_size,             num_words_in_src)
@@ -58,7 +57,6 @@ class Mymodel(nn.Module):
         y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
         max_tgt_len = max(len(words) for words in tgt_batch)
         for t in range(1, max_tgt_len + 1):
-            print('starting' + str(t))
             # Decede
             alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(s))) for h_i in h_s] # (max_length, batch_size, 1)
             alpha = F.softmax(torch.stack(alpha) * s_mask, dim=0)       # (max_length, batch_size, 1)
