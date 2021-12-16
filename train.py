@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import time
 import numpy as np
 from torch.utils.data import DataLoader
 from myvocabulary import *
@@ -33,6 +34,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0)
 
     for epoch in range(1, epoch_num + 1):
+        start_time = time.time()
         losses = []
         for i_batch, batch_data in enumerate(dataloader):
             optimizer.zero_grad()
@@ -43,6 +45,8 @@ def main():
 
             if (i_batch + 1) % 100 == 0:
                 print("Epoch %d Batch %d, train loss %f" % (epoch, i_batch, np.mean(losses[-100:])))
+
+        print("Epoch " + str(epoch) + " finished, took " + str(time.time() - start_time) + "s")
     
 if __name__ == "__main__":
     main()

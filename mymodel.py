@@ -32,6 +32,7 @@ class Mymodel(nn.Module):
         # batch_data[1]: (batch_size, num_values, num_words_in_value)
         # batch_data[2]: (batch_size,             num_words_in_src)
         # batch_data[3]: (batch_size,             num_words_in_tgt)
+        self.batch_size = len(batch_data[0])
 
         key_batch = [sum(i, []) for i in batch_data[0]]     # (batch_size, num_words)
         value_batch = [sum(i, []) for i in batch_data[1]]   # (batch_size, num_words)
