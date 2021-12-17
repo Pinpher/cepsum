@@ -76,4 +76,4 @@ class Mymodel(nn.Module):
             indices = torch.masked_select(indices, mask)                
             loss[i] = torch.mean(-torch.log(p_g[i][indices]))
 
-        return loss.mean()
+        return loss

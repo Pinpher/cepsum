@@ -45,6 +45,7 @@ def main():
         for i_batch, batch_data in enumerate(train_dataloader):
             optimizer.zero_grad()
             loss = model(batch_data)
+            loss = loss.mean()
             loss.backward()
             optimizer.step()
             train_losses.append(loss.tolist())
