@@ -30,14 +30,14 @@ def main():
         embed_dim = 300,
         hidden_size = 1024,
         candidate_size = 100000,
-        device = "cpu"
+        device = "cuda"
     )
     model_dict = torch.load("./model/model_test_2").module.state_dict()
     model.load_state_dict(model_dict)
-    #model.to("cuda")
+    model.to("cuda")
     model.eval()
 
-    embedding = MyEmbedding("cpu")
+    embedding = MyEmbedding("cuda")
 
     # f is a "cut_" file
     with open("./data/cut_train.txt", "r", encoding="utf8") as f:

@@ -17,14 +17,15 @@ class MyEmbedding:
                 vector = list(map(float, values[1:]))
                 embeddings.append(torch.Tensor(vector))
         self.embedding = nn.Embedding.from_pretrained(torch.stack(embeddings))
+        self.sepId = self.wordToIndex['[SEP]']
     
     def embed(self, batch):
         batch_embedding, batch_mask, batch_indices = [], [], []
         max_len = max(len(words) for words in batch)
         for words in batch:
             indices = [self.wordToIndex[word] for word in words]
-            indices += [2] * (max_len - len(words))             # 2 is [SEP]
-            batch_mask.append(torch.IntTensor(indices) != 2)    # 2 is [SEP]
+            indices += [self.sepId] * (max_len - len(words))            
+            batch_mask.append(torch.IntTensor(indices) != self.sepId)   
             batch_embedding.append(self.embedding(torch.IntTensor(indices)))
             batch_indices.append(torch.IntTensor(indices))
         batch_embedding = torch.stack(batch_embedding, dim=1).to(self.device)       # (max_length, batch_size, embed_dim)
@@ -34,9 +35,6 @@ class MyEmbedding:
 
     def vocabSize(self):
         return len(self.vocabs)
-    
-    def getIndex(self, word):
-        return self.wordToIndex[word]
     
     def getWord(self, index):
         return self.vocabs[index]
