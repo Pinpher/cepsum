@@ -66,6 +66,7 @@ class Mymodel(nn.Module):
             # Generate
             p_gen.append(F.softmax(self.w_b(s) + self.v_b(ctx), dim=1)) # (cur_length, batch_size, candidate_size)
 
+        p_gen = torch.stack(p_gen)
         for i in range(self.batch_size):
             p_i = p_gen[:, i].squeeze(1)                        # (max_length, candidate_size)
             mask_i = t_mask[:, i].squeeze(1)                    # (max_length, 1)
