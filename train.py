@@ -18,8 +18,6 @@ epoch_num = 20
 model_save_path = "./model"
 name = "test"
 
-#embedding = MyEmbedding()
-#vocabulary = Myvocabulary()
 train_data = MyDataset("data/cut_train.txt")
 valid_data = MyDataset("data/cut_valid.txt")
 train_dataloader = DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn)
@@ -35,8 +33,7 @@ def main():
         candidate_size = candidate_size,
         device = device
     )
-    model.to(device)
-    model = nn.DataParallel(model)
+    model = nn.DataParallel(model.to(device))
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0)
 
     for epoch in range(1, epoch_num + 1):
@@ -60,7 +57,7 @@ def main():
         print("Epoch " + str(epoch) + " finished, took " + str(time.time() - start_time) + "s", flush=True)
         print("valid loss " + str(np.mean(valid_losses)), flush=True)
 
-        with open(os.path.join(model_save_path, 'model_%s' % name), "wb") as f:
+        with open(os.path.join(model_save_path, "model_%s_%d" % (name, epoch)), "wb") as f:
             torch.save(model, f)
     
 if __name__ == "__main__":
