@@ -43,11 +43,11 @@ class Mymodel(nn.Module):
         k_embedding, k_mask, _ = self.embedding.embed(key_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         v_embedding, v_mask, _ = self.embedding.embed(value_batch)  # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         s_embedding, s_mask, _ = self.embedding.embed(src_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
-        s_mask.to(self.device)
+        s_mask = s_mask.to(self.device)
 
         t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)  
-        t_indices.to(self.device)
-        t_mask.to(self.device)
+        t_indices = t_indices.to(self.device)
+        t_mask = t_mask.to(self.device)
 
         # Encode
         h_k, _ = self.k_encoder(k_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
