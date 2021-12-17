@@ -70,6 +70,7 @@ class Mymodel(nn.Module):
         for i in range(self.batch_size):
             p_i = p_gen[:, i].squeeze(1)                        # (max_length, candidate_size)
             mask_i = t_mask[:, i].squeeze(1)                    # (max_length, 1)
+            print(p_i.shape, mask_i.shape)
             p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
             p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
             y_i = torch.masked_select(t_indices[:, i], mask_i)  # (length_i)
