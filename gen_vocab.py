@@ -12,7 +12,7 @@ for line in open("data/cut_valid.txt", "r", encoding="utf-8"):
 
 w2v = Word2Vec(lines, vector_size=300, min_count=1)
 
-vec = np.mean([w2v.wv[key] for key in w2v.wv.key_to_index.keys()], axis=1)
+vec = np.mean([w2v.wv[key] for key in w2v.wv.key_to_index.keys()], axis=0)
 
 with open("vocab/vocab.txt", "w", encoding="utf8") as f:
     f.write("[UNK]" + " " + convert(vec) + "\n")
