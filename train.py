@@ -9,8 +9,7 @@ from mymodel import *
 batch_size = 32
 embed_dim = 300
 hidden_size = 384
-candidate_size = 100000
-learning_rate = 1e-4
+learning_rate = 1e-3
 epoch_num = 20
 model_save_path = "./model"
 name = "test"
@@ -27,7 +26,6 @@ def main():
         batch_size = batch_size,
         embed_dim = embed_dim,
         hidden_size = hidden_size,
-        candidate_size = candidate_size,
         device = device
     )
     model = nn.DataParallel(model.to(device))

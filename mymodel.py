@@ -5,15 +5,16 @@ import torch.nn.functional as F
 from myembedding import *
 
 class Mymodel(nn.Module):
-    def __init__(self, batch_size, embed_dim, hidden_size, candidate_size, device):
+    def __init__(self, batch_size, embed_dim, hidden_size, device):
         super(Mymodel, self).__init__()
         self.batch_size = batch_size
         self.embed_dim = embed_dim
         self.hidden_size = hidden_size
-        self.candidate_size = candidate_size
         self.device = device
 
         self.embedding = MyEmbedding(self.device)
+
+        self.candidate_size = self.embedding.vocabSize()
 
         self.k_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
         self.v_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
@@ -24,8 +25,8 @@ class Mymodel(nn.Module):
         self.v_a = nn.Linear(hidden_size, hidden_size, bias=False)
         self.u_a = nn.Linear(hidden_size, 1, bias=False)
 
-        self.w_b = nn.Linear(hidden_size, candidate_size, bias=False)
-        self.v_b = nn.Linear(hidden_size * 2, candidate_size, bias=False)
+        self.w_b = nn.Linear(hidden_size, self.candidate_size, bias=False)
+        self.v_b = nn.Linear(hidden_size * 2, self.candidate_size, bias=False)
 
 
     def forward(self, batch_data):
