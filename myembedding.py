@@ -4,7 +4,8 @@ from tqdm import tqdm
 from collections import defaultdict
 
 class MyEmbedding:
-    def __init__(self, vocab="vocab/small_vocab.txt"):
+    def __init__(self, device, vocab="vocab/small_vocab.txt"):
+        self.device = device
         embeddings = []
         self.vocabs = []
         self.wordToIndex = defaultdict(int)
@@ -26,9 +27,9 @@ class MyEmbedding:
             batch_mask.append(torch.IntTensor(indices) != 2)    # 2 is [SEP]
             batch_embedding.append(self.embedding(torch.IntTensor(indices)))
             batch_indices.append(torch.IntTensor(indices))
-        batch_embedding = torch.stack(batch_embedding, dim=1)       # (max_length, batch_size, embed_dim)
-        batch_mask = torch.stack(batch_mask, dim=1).unsqueeze(-1)   # (max_length, batch_size, 1)
-        batch_indices = torch.stack(batch_indices, dim=1)           # (max_length, batch_size)
+        batch_embedding = torch.stack(batch_embedding, dim=1).to(self.device)       # (max_length, batch_size, embed_dim)
+        batch_mask = torch.stack(batch_mask, dim=1).unsqueeze(-1).to(self.device)   # (max_length, batch_size, 1)
+        batch_indices = torch.stack(batch_indices, dim=1).to(self.device)           # (max_length, batch_size)
         return batch_embedding, batch_mask, batch_indices
 
     def vocabSize(self):

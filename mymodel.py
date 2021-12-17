@@ -13,7 +13,7 @@ class Mymodel(nn.Module):
         self.candidate_size = candidate_size
         self.device = device
 
-        self.embedding = MyEmbedding()
+        self.embedding = MyEmbedding(self.device)
 
         self.k_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
         self.v_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
@@ -43,16 +43,12 @@ class Mymodel(nn.Module):
         k_embedding, k_mask, _ = self.embedding.embed(key_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         v_embedding, v_mask, _ = self.embedding.embed(value_batch)  # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         s_embedding, s_mask, _ = self.embedding.embed(src_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
-        s_mask = s_mask.to(self.device)
-
         t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)  
-        t_indices = t_indices.to(self.device)
-        t_mask = t_mask.to(self.device)
 
         # Encode
-        h_k, _ = self.k_encoder(k_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
-        h_v, _ = self.v_encoder(v_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
-        h_s, _ = self.s_encoder(s_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
+        h_k, _ = self.k_encoder(k_embedding)     # (max_length, batch_size, hidden_size * 2)
+        h_v, _ = self.v_encoder(v_embedding)     # (max_length, batch_size, hidden_size * 2)
+        h_s, _ = self.s_encoder(s_embedding)     # (max_length, batch_size, hidden_size * 2)
 
         # Decode & Generate & Loss
         hidden_states = []
