@@ -49,7 +49,7 @@ def main():
         model.eval()
         for i_batch, batch_data in enumerate(valid_dataloader):
             loss, _ = model(batch_data)
-            valid_losses.append(loss.mean())
+            valid_losses.append(loss.mean().detach())
         model.train()
         print("Epoch " + str(epoch) + " finished, took " + str(time.time() - start_time) + "s", flush=True)
         print("valid loss " + str(np.mean(valid_losses)), flush=True)
