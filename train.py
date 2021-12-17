@@ -1,11 +1,8 @@
-import torch.nn as nn
-import torch.nn.functional as F
-import time
 import os
+import time
 import numpy as np
+import torch.nn as nn
 from torch.utils.data import DataLoader
-from myvocabulary import *
-from myembedding import *
 from mydataset import *
 from mymodel import *
 

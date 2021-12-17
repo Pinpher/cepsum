@@ -25,7 +25,7 @@ class Mymodel(nn.Module):
         self.u_a = nn.Linear(hidden_size, 1, bias=False)
 
         self.w_b = nn.Linear(hidden_size, candidate_size, bias=False)
-        self.v_b = nn.Linear(hidden_size * 2, candidate_size, bias=False)   # Considering the wrong ctx shape
+        self.v_b = nn.Linear(hidden_size * 2, candidate_size, bias=False)
 
 
     def forward(self, batch_data):
@@ -51,7 +51,7 @@ class Mymodel(nn.Module):
         h_s, _ = self.s_encoder(s_embedding)     # (max_length, batch_size, hidden_size * 2)
 
         # Decode & Generate & Loss
-        hidden_states = []
+        hidden_states, p_gen = [], []
         loss = torch.zeros(self.batch_size).to(self.device)
         s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
         y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
@@ -60,16 +60,19 @@ class Mymodel(nn.Module):
             # Decede
             alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(s))) for h_i in h_s]      # (max_length, batch_size, 1)
             alpha = F.softmax(torch.stack(alpha).to(self.device) * s_mask, dim=0)           # (max_length, batch_size, 1)
-            ctx = torch.sum(alpha * h_s, dim=0)                         # (batch_size, hidden_size) (It is wrong!!!)
+            ctx = torch.sum(alpha * h_s, dim=0)                         # (batch_size, hidden_size * 2)
             s, y = self.decoder(ctx, (s, y))                            # s_t and y_t (batch_size, hidden_size)
             hidden_states.append(s)                                     # (cur_length, batch_size, hidden_size)
             # Generate
-            p_g = F.softmax(self.w_b(s) + self.v_b(ctx), dim=1)         # P_gen (batch_size, candidate_size)
+            p_gen.append(F.softmax(self.w_b(s) + self.v_b(ctx), dim=1)) # (cur_length, batch_size, candidate_size)
 
         for i in range(self.batch_size):
-            indices = t_indices[:,i].long()
-            mask = t_mask[:,i].squeeze(-1).bool()                        
-            indices = torch.masked_select(indices, mask)                
-            loss[i] = torch.mean(-torch.log(p_g[i][indices]))
+            p_i = p_gen[:, i].squeeze(1)                        # (max_length, candidate_size)
+            mask_i = t_mask[:, i].squeeze(1)                    # (max_length, 1)
+            p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
+            p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
+            y_i = torch.masked_select(t_indices[:, i], mask_i)  # (length_i)
+            probs = p_i[range(len(y_i)), y_i]                   # (length_i)
+            loss[i] = torch.mean(-torch.log(probs))
 
         return loss
