@@ -4,7 +4,7 @@ from tqdm import tqdm
 from collections import defaultdict
 
 class MyEmbedding:
-    def __init__(self, device, vocab="vocab/small_vocab.txt"):
+    def __init__(self, device, vocab="vocab/vocab.txt"):
         self.device = device
         embeddings = []
         self.vocabs = []
