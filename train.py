@@ -50,7 +50,7 @@ def main():
         valid_losses = []
         for i_batch, batch_data in enumerate(valid_dataloader):
             loss, _ = model(batch_data)
-            valid_losses.append(loss.tolist())
+            valid_losses.append(loss.mean())
         print("Epoch " + str(epoch) + " finished, took " + str(time.time() - start_time) + "s", flush=True)
         print("valid loss " + str(np.mean(valid_losses)), flush=True)
 
