@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 from myembedding import *
 
 class Mymodel(nn.Module):
@@ -81,4 +80,4 @@ class Mymodel(nn.Module):
             indices = torch.masked_select(indices, mask)                
             loss.append(torch.mean(-torch.log(torch.Tensor([p_g[i][index] for index in indices]))))
 
-        return np.mean(loss)
+        return torch.Tensor(loss).mean()
