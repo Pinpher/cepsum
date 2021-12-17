@@ -5,7 +5,7 @@ from myembedding import *
 
 class Mymodel(nn.Module):
     def __init__(self, batch_size, embed_dim, hidden_size, candidate_size, device):
-        super().__init__()
+        super(Mymodel, self).__init__()
         self.batch_size = batch_size
         self.embed_dim = embed_dim
         self.hidden_size = hidden_size
@@ -25,7 +25,7 @@ class Mymodel(nn.Module):
 
         self.w_b = nn.Linear(hidden_size, candidate_size, bias=False)
         self.v_b = nn.Linear(hidden_size * 2, candidate_size, bias=False)   # Considering the wrong ctx shape
-        return
+
 
     def forward(self, batch_data):
         # batch_data[0]: (batch_size, num_keys,   num_words_in_key)
