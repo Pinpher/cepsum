@@ -54,7 +54,7 @@ class Mymodel(nn.Module):
 
         # Decode & Generate & Loss
         hidden_states = []
-        loss = torch.zeros(self.batch_size).to(self.device)
+        loss = []
         s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
         y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
         max_tgt_len = max(len(words) for words in tgt_batch)
