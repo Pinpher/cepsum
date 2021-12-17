@@ -25,7 +25,7 @@ def filtering(prob, k=50, p=0.8):
 
 def main():
     #model = torch.load("./model/model_test_2")
-    model = Mymodel(
+    '''model = Mymodel(
         batch_size = 32,
         embed_dim = 300,
         hidden_size = 1024,
@@ -54,7 +54,7 @@ def main():
                 index = filtering(probs.detach())
                 word = embedding.getWord(index)
                 gen_str += word
-            print(gen_str)
+            print(gen_str)'''
     
 if __name__ == "__main__":
     main()

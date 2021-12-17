@@ -8,9 +8,9 @@ from mymodel import *
 
 batch_size = 32
 embed_dim = 300
-hidden_size = 1024
+hidden_size = 384
 candidate_size = 100000
-learning_rate = 1e-3
+learning_rate = 1e-4
 epoch_num = 20
 model_save_path = "./model"
 name = "test"
@@ -44,7 +44,7 @@ def main():
             optimizer.step()
             train_losses.append(loss.tolist())
 
-            if (i_batch + 1) % 10 == 0:
+            if i_batch % 10 == 0:
                 print("Epoch %d Batch %d, train loss %f" % (epoch, i_batch, np.mean(train_losses[-10:])), flush=True)
 
         valid_losses = []
@@ -57,7 +57,7 @@ def main():
         print("valid loss " + str(np.mean(valid_losses)), flush=True)
 
         with open(os.path.join(model_save_path, "model_%s_%d" % (name, epoch)), "wb") as f:
-            torch.save(model, f)
+            torch.save(model.module.state_dict(), f)
     
 if __name__ == "__main__":
     main()
