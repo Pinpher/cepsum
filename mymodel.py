@@ -63,7 +63,7 @@ class Mymodel(nn.Module):
         for t in range(1, max_tgt_len + 1):
             # Decede
             alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(s))) for h_i in h_s]      # (max_length, batch_size, 1)
-            alpha = F.softmax(torch.stack(alpha, device=self.device) * s_mask, dim=0)       # (max_length, batch_size, 1)
+            alpha = F.softmax(torch.stack(alpha).to(self.device) * s_mask, dim=0)           # (max_length, batch_size, 1)
             ctx = torch.sum(alpha * h_s, dim=0)                         # (batch_size, hidden_size) (It is wrong!!!)
             s, y = self.decoder(ctx, (s, y))                            # s_t and y_t (batch_size, hidden_size)
             hidden_states.append(s)                                     # (cur_length, batch_size, hidden_size)
