@@ -78,6 +78,6 @@ class Mymodel(nn.Module):
             indices = t_indices[:,i]
             mask = t_mask[:,i].squeeze(-1).byte()                        
             indices = torch.masked_select(indices, mask)                
-            loss[i] = torch.mean(-torch.log(torch.Tensor([p_g[i][index] for index in indices])))
+            loss[i] = torch.mean(-torch.log(torch.stack([p_g[i][index] for index in indices])))
 
         return loss.mean()
