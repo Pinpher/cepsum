@@ -17,8 +17,8 @@ name = "test"
 
 train_data = MyDataset("data/cut_train.txt")
 valid_data = MyDataset("data/cut_valid.txt")
-train_dataloader = DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn)
-valid_dataloader = DataLoader(valid_data, batch_size=batch_size, collate_fn=collate_fn)
+train_dataloader = DataLoader(train_data, batch_size=batch_size, collate_fn=collate_fn, shuffle=True)
+valid_dataloader = DataLoader(valid_data, batch_size=batch_size, collate_fn=collate_fn, shuffle=True)
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,9 +48,11 @@ def main():
                 print("Epoch %d Batch %d, train loss %f" % (epoch, i_batch, np.mean(train_losses[-10:])), flush=True)
 
         valid_losses = []
+        model.eval()
         for i_batch, batch_data in enumerate(valid_dataloader):
             loss, _ = model(batch_data)
             valid_losses.append(loss.mean())
+        model.train()
         print("Epoch " + str(epoch) + " finished, took " + str(time.time() - start_time) + "s", flush=True)
         print("valid loss " + str(np.mean(valid_losses)), flush=True)
 

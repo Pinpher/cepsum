@@ -24,17 +24,27 @@ def filtering(prob, k=50, p=0.8):
     return torch.multinomial(prob, 1).long()
 
 def main():
-    model = torch.load("")
+    #model = torch.load("./model/model_test_2")
+    model = Mymodel(
+        batch_size = 32,
+        embed_dim = 300,
+        hidden_size = 1024,
+        candidate_size = 100000,
+        device = "cpu"
+    )
+    model_dict = torch.load("./model/model_test_2").module.state_dict()
+    model.load_state_dict(model_dict)
     model.eval()
 
-    embedding = MyEmbedding("cpu")
+    embedding = MyEmbedding("cuda")
 
-    with open("file_path", "r", encoding="utf8") as f:
+    # f is a "cut_" file
+    with open("./data/cut_train.txt", "r", encoding="utf8") as f:
         for i, line in tqdm(enumerate(f)):
             keys, values, src, tgt = line.split("\t\t")
             keys = [[key.split() for key in keys.split("\t")]]
             values = [[value.split() for value in values.split("\t")]]
-            src, tgt = [src.split()], [""] * 128
+            src, tgt = [src.split()], [[""] * 128]
             _, p_gen = model((keys, values, src, tgt))
             # Generate using p_gen
             gen_str = ""
