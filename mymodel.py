@@ -69,7 +69,7 @@ class Mymodel(nn.Module):
             p_g = F.softmax(self.w_b(s) + self.v_b(ctx), dim=1)         # P_gen (batch_size, candidate_size)
 
         for i in range(self.batch_size):
-            indices = t_indices[:,i]
+            indices = t_indices[:,i].long()
             mask = t_mask[:,i].squeeze(-1).byte()                        
             indices = torch.masked_select(indices, mask)                
             loss[i] = torch.mean(-torch.log(p_g[i][indices]))
