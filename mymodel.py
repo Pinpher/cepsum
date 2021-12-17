@@ -45,6 +45,7 @@ class Mymodel(nn.Module):
         s_mask = s_mask.to(self.device)
 
         t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)  
+        t_mask = t_mask.to(self.device)
 
         # Encode
         h_k, _ = self.k_encoder(k_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
@@ -75,7 +76,7 @@ class Mymodel(nn.Module):
 
         for i in range(self.batch_size):
             indices = t_indices[:,i]
-            mask = s_mask[:,i].squeeze(-1).byte()                        
+            mask = t_mask[:,i].squeeze(-1).byte()                        
             indices = torch.masked_select(indices, mask)                
             loss.append(torch.mean(-torch.log([p_g[i][index] for index in indices])))
 
