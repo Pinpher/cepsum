@@ -66,8 +66,17 @@ class Mymodel(nn.Module):
             hidden_states.append(s)                                     # (cur_length, batch_size, hidden_size)
             # Generate
             p_g = F.softmax(self.w_b(s) + self.v_b(ctx), dim=1)         # P_gen (batch_size, candidate_size)
+        
+        '''for t in range(1, max_tgt_len + 1):
             # Loss
             index = t_indices[t - 1]                                    # (batch_size) list
             loss += -(torch.log(torch.stack([p_g[i][index[i]] for i in range(self.batch_size)]))) / max_tgt_len     # fking ugly (batch_size)
-        
+            tmp_loss = -(torch.log(torch.stack([p_g[i][index[i]] for i in range(self.batch_size)])))'''
+
+        for i in range(self.batch_size):
+            indices = t_indices[:,i]
+            mask = s_mask[:,i].squeeze(-1).byte()                        
+            indices = torch.masked_select(indices, mask)                
+            loss.append(torch.sum(-torch.log([p_g[i][indice] for indice in indices])) / len(indices))
+
         return loss.mean()
