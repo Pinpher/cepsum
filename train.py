@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import time
+import os
 import numpy as np
 from torch.utils.data import DataLoader
 from myvocabulary import *
@@ -13,7 +14,7 @@ embed_dim = 300
 hidden_size = 128
 candidate_size = 100000
 learning_rate = 1e-3
-epoch_num = 1
+epoch_num = 5
 model_save_path = "./model"
 name = "test"
 
@@ -50,8 +51,8 @@ def main():
 
         print("Epoch " + str(epoch) + " finished, took " + str(time.time() - start_time) + "s")
 
-	with open(os.path.join(model_save_path, 'model_%s' % name), "wb") as f:
-torch.save(model, f)
+        with open(os.path.join(model_save_path, 'model_%s' % name), "wb") as f:
+            torch.save(model, f)
     
 if __name__ == "__main__":
     main()
