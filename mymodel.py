@@ -42,11 +42,11 @@ class Mymodel(nn.Module):
         k_embedding, k_mask, _ = self.embedding.embed(key_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         v_embedding, v_mask, _ = self.embedding.embed(value_batch)  # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
         s_embedding, s_mask, _ = self.embedding.embed(src_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), _
-        s_mask = s_mask.to(self.device)
+        s_mask.to(self.device)
 
         t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)  
-        t_indices = t_indices.to(self.device)
-        t_mask = t_mask.to(self.device)
+        t_indices.to(self.device)
+        t_mask.to(self.device)
 
         # Encode
         h_k, _ = self.k_encoder(k_embedding.to(self.device))     # (max_length, batch_size, hidden_size * 2)
@@ -55,7 +55,7 @@ class Mymodel(nn.Module):
 
         # Decode & Generate & Loss
         hidden_states = []
-        loss = torch.zeros(self.batch_size)
+        loss = torch.zeros(self.batch_size).to(self.device)
         s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
         y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
         max_tgt_len = max(len(words) for words in tgt_batch)
@@ -71,7 +71,7 @@ class Mymodel(nn.Module):
 
         for i in range(self.batch_size):
             indices = t_indices[:,i].long()
-            mask = t_mask[:,i].squeeze(-1).byte()                        
+            mask = t_mask[:,i].squeeze(-1).bool()                        
             indices = torch.masked_select(indices, mask)                
             loss[i] = torch.mean(-torch.log(p_g[i][indices]))
 
