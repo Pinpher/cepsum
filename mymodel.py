@@ -75,4 +75,4 @@ class Mymodel(nn.Module):
             probs = p_i[range(len(y_i)), y_i]                   # (length_i)
             loss[i] = torch.mean(-torch.log(probs))
 
-        return loss
+        return loss, p_gen
