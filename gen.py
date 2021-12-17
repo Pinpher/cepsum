@@ -34,9 +34,10 @@ def main():
     )
     model_dict = torch.load("./model/model_test_2").module.state_dict()
     model.load_state_dict(model_dict)
+    #model.to("cuda")
     model.eval()
 
-    embedding = MyEmbedding("cuda")
+    embedding = MyEmbedding("cpu")
 
     # f is a "cut_" file
     with open("./data/cut_train.txt", "r", encoding="utf8") as f:
@@ -50,7 +51,7 @@ def main():
             gen_str = ""
             p_gen = p_gen.squeeze(1)    # (cur_length, candidate_size)
             for probs in p_gen:         # (candidate_size)
-                index = filtering(probs)
+                index = filtering(probs.detach())
                 word = embedding.getWord(index)
                 gen_str += word
             print(gen_str)
