@@ -73,7 +73,7 @@ class Mymodel(nn.Module):
             p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
             p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
             y_i = torch.masked_select(t_indices[:, i], mask_i)  # (length_i)
-            probs = p_i[range(len(y_i)), y_i]                   # (length_i)
+            probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
             loss[i] = torch.mean(-torch.log(probs))
 
         return loss, p_gen
