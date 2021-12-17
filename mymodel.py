@@ -45,6 +45,7 @@ class Mymodel(nn.Module):
         s_mask = s_mask.to(self.device)
 
         t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)  
+        t_indices = t_indices.to(self.device)
         t_mask = t_mask.to(self.device)
 
         # Encode
