@@ -11,7 +11,7 @@ from mymodel import *
 
 batch_size = 32
 embed_dim = 300
-hidden_size = 128
+hidden_size = 1024
 candidate_size = 100000
 learning_rate = 1e-3
 epoch_num = 20
@@ -36,6 +36,7 @@ def main():
         device = device
     )
     model.to(device)
+    model = nn.DataParallel(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0)
 
     for epoch in range(1, epoch_num + 1):

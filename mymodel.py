@@ -17,7 +17,7 @@ class Mymodel(nn.Module):
         self.k_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
         self.v_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
         self.s_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
-        self.decoder = nn.LSTMCell(input_size=256, hidden_size=hidden_size)
+        self.decoder = nn.LSTMCell(input_size=hidden_size * 2, hidden_size=hidden_size)
 
         self.w_a = nn.Linear(hidden_size * 2, hidden_size, bias=False)
         self.v_a = nn.Linear(hidden_size, hidden_size, bias=False)
@@ -67,17 +67,11 @@ class Mymodel(nn.Module):
             hidden_states.append(s)                                     # (cur_length, batch_size, hidden_size)
             # Generate
             p_g = F.softmax(self.w_b(s) + self.v_b(ctx), dim=1)         # P_gen (batch_size, candidate_size)
-        
-        '''for t in range(1, max_tgt_len + 1):
-            # Loss
-            index = t_indices[t - 1]                                    # (batch_size) list
-            loss += -(torch.log(torch.stack([p_g[i][index[i]] for i in range(self.batch_size)]))) / max_tgt_len     # fking ugly (batch_size)
-            tmp_loss = -(torch.log(torch.stack([p_g[i][index[i]] for i in range(self.batch_size)])))'''
 
         for i in range(self.batch_size):
             indices = t_indices[:,i]
             mask = t_mask[:,i].squeeze(-1).byte()                        
             indices = torch.masked_select(indices, mask)                
-            loss[i] = torch.mean(-torch.log(torch.stack([p_g[i][index] for index in indices])))
+            loss[i] = torch.mean(-torch.log(p_g[i][indices]))
 
         return loss.mean()
