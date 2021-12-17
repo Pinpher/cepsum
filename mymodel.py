@@ -54,7 +54,7 @@ class Mymodel(nn.Module):
 
         # Decode & Generate & Loss
         hidden_states = []
-        loss = []
+        loss = torch.zeros(self.batch_size)
         s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
         y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
         max_tgt_len = max(len(words) for words in tgt_batch)
@@ -78,6 +78,6 @@ class Mymodel(nn.Module):
             indices = t_indices[:,i]
             mask = t_mask[:,i].squeeze(-1).byte()                        
             indices = torch.masked_select(indices, mask)                
-            loss.append(torch.mean(-torch.log(torch.Tensor([p_g[i][index] for index in indices]))))
+            loss[i] = torch.mean(-torch.log(torch.Tensor([p_g[i][index] for index in indices])))
 
-        return torch.Tensor(loss).mean()
+        return loss.mean()
