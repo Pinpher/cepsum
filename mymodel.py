@@ -25,6 +25,8 @@ class Mymodel(nn.Module):
         self.decoder = nn.LSTMCell(input_size=embed_dim, hidden_size=hidden_size)
 
         self.decoder_s_init = nn.Linear(hidden_size * 2, hidden_size)
+        self.decoder_k_init = nn.Linear(hidden_size * 2, hidden_size)
+        self.decoder_v_init = nn.Linear(hidden_size * 2, hidden_size)
 
         self.w_a = nn.Linear(hidden_size * 2, hidden_size, bias=False)
         self.v_a = nn.Linear(hidden_size, hidden_size, bias=False)
@@ -33,13 +35,13 @@ class Mymodel(nn.Module):
         self.w_b = nn.Linear(hidden_size, self.candidate_size, bias=False)
         self.v_b = nn.Linear(hidden_size * 2, self.candidate_size, bias=False)
 
-        '''self.w_d = nn.Linear(hidden_size * 2, 1, bias=False)
+        self.w_d = nn.Linear(hidden_size * 2, 1, bias=False)
         self.u_d = nn.Linear(hidden_size, 1, bias=False)
-        self.v_d = nn.Linear(hidden_size, 1, bias=False)
+        self.v_d = nn.Linear(embed_dim, 1, bias=False)
 
         self.w_e = nn.Linear(hidden_size * 2, 1, bias=False)
         self.u_e = nn.Linear(hidden_size, 1, bias=False)
-        self.v_e = nn.Linear(hidden_size, 1, bias=False)'''
+        self.v_e = nn.Linear(embed_dim, 1, bias=False)
 
     def forward(self, batch_data):
         # batch_data[0]: (batch_size, num_keys,   num_words_in_key)
@@ -71,12 +73,12 @@ class Mymodel(nn.Module):
         # Decode
         max_tgt_len = max(len(words) for words in tgt_batch)
         max_v_len = max(len(words) for words in value_batch)
-        p, alpha_x, c_x, y_x, s_x = self.decode(decoder_s_h0, decoder_s_c0, t_embedding, s_mask, h_s, max_tgt_len)
+        p_gen, alpha_x, c_x, s_x = self.decode(decoder_s_h0, decoder_s_c0, t_embedding, s_mask, h_s, max_tgt_len)
 
         # loss
         loss = torch.zeros(self.batch_size).to(self.device)
         for i in range(self.batch_size):
-            p_i = p[:, i].squeeze(1)                            # (max_length, candidate_size)
+            p_i = p_gen[:, i].squeeze(1)                            # (max_length, candidate_size)
             mask_i = t_mask[:, i]                               # (max_length, 1)
             p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
             p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
@@ -87,7 +89,7 @@ class Mymodel(nn.Module):
             probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
             loss[i] = torch.mean(-torch.log(probs))
 
-        '''# turn each key into one (1, hidden_size * 2) tensor, like embedding
+        # turn each key into one (1, hidden_size * 2) tensor, like embedding
         # another ugly section
         h_k_attr = []
         for i in range(self.batch_size):
@@ -111,8 +113,16 @@ class Mymodel(nn.Module):
         h_k_attr = torch.stack([torch.stack(i) for i in h_k_attr]).transpose(0, 1)  # (max_key_length, batch_size, hidden_size * 2)
         mask_key_attr = torch.stack(mask_key_attr).transpose(0, 1).unsqueeze(-1)    # (max_key_length, batch_size, 1)
 
-        _, alpha_k, c_k, _, _ = self.decode(mask_key_attr, h_k_attr, max_tgt_len)
-        _, alpha_v, c_v, _, _ = self.decode(v_mask, h_v, max_tgt_len)
+        # Decoder key & value init state
+        cell_k = torch.cat(list(state_k[1]), dim=1)             # (batch_size, hidden_size * 2)
+        decoder_k_c0 = self.decoder_k_init(cell_k)              # (batch_size, hidden_size)
+        decoder_k_h0 = torch.tanh(decoder_k_c0)                 # (batch_size, hidden_size)
+        cell_v = torch.cat(list(state_v[1]), dim=1)             # (batch_size, hidden_size * 2)
+        decoder_v_c0 = self.decoder_v_init(cell_v)              # (batch_size, hidden_size)
+        decoder_v_h0 = torch.tanh(decoder_v_c0)                 # (batch_size, hidden_size)
+
+        _, alpha_k, c_k, s_k = self.decode(decoder_k_h0, decoder_k_c0, t_embedding, mask_key_attr, h_k_attr, max_tgt_len)
+        _, alpha_v, c_v, s_v = self.decode(decoder_v_h0, decoder_v_c0, t_embedding, v_mask, h_v, max_tgt_len)
 
         p_copy_x = []
         for t in range(0, max_tgt_len):
@@ -142,34 +152,30 @@ class Mymodel(nn.Module):
                     mask_v = v_mask[i][batch_i].squeeze(-1)         # (1)
                     p_copy_v_per_t[batch_i, index.long()] += (alpha_k_per_t[attr_i][batch_i].squeeze(-1) * mask_k) * (alpha_v_per_t[i][batch_i].squeeze(-1) * mask_v)    # (batch_size, candidate_size)
                     attr_j += 1
-
             p_copy_v.append(p_copy_v_per_t)
         p_copy_v = torch.stack(p_copy_v)    # (max_tgt_len, batch_size, candidate_size)
 
-        gama_t = torch.sigmoid(self.w_d(c_k) + self.w_d(c_x) + self.u_d(s_x) + self.v_d(y_x))           # (max_tgt_len, batch_size, 1)
+        gama_t = torch.sigmoid(self.w_d(c_k) + self.w_d(c_x) + self.u_d(s_x) + self.v_d(t_embedding))           # (max_tgt_len, batch_size, 1)
         p_copy = gama_t * p_copy_x + (torch.ones(gama_t.shape).to(self.device) - gama_t) * p_copy_v     # (max_tgt_len, batch_size, candidate_size)
 
-        lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(y_x))                         # (max_tgt_len, batch_size, 1)
-        p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)'''
+        lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(t_embedding))                         # (max_tgt_len, batch_size, 1)
+        p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)
         
         return loss, p
 
-    # Decode & Generate
+    # Attention & Decode & Generate
     def decode(self, hidden, cell, t_embedding, input_mask, input_h, max_input_len):
-        p, alpha_per_t, c_per_t, y_per_t, s_per_t = [], [], [], [], []
+        p, alpha, c, s = [], [], [], []
         # For each target word
         for t in range(max_input_len):
-            # y_per_t.append(y)                                           # y_per_t indicates y_(t-1) (cur_length, batch_size, hidden_size)
-            
             # Decode
-            alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(hidden))) for h_i in input_h] # (max_length, batch_size, 1)
-            alpha = F.softmax(torch.stack(alpha).to(self.device) * input_mask, dim=0)           # (max_length, batch_size, 1)
-            ct = torch.sum(alpha * input_h, dim=0)                                              # (batch_size, hidden_size * 2)
+            alpha_t = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(hidden))) for h_i in input_h] # (max_length, batch_size, 1)
+            alpha_t = F.softmax(torch.stack(alpha_t).to(self.device) * input_mask, dim=0)           # (max_length, batch_size, 1)
+            c_t = torch.sum(alpha_t * input_h, dim=0)                                              # (batch_size, hidden_size * 2)
             hidden, cell = self.decoder(t_embedding[t], (hidden, cell))                         # (batch_size, hidden_size)
-            #s_per_t.append(s)                                           # (cur_length, batch_size, hidden_size)
-            #alpha_per_t.append(alpha)                                   # (cur_length, max_length, batch_size, 1)
-            #c_per_t.append(ct)                                          # (cur_length, batch_size, hidden_size * 2)
             # Generate
-            p.append(F.softmax(self.w_b(hidden) + self.v_b(ct), dim=1))                         # only for p_gen & src (cur_length, batch_size, candidate_size)
-        # return torch.stack(p), torch.stack(alpha_per_t), torch.stack(c_per_t), torch.stack(y_per_t), torch.stack(s_per_t)
-        return torch.stack(p), [], [], [], []
+            p.append(F.softmax(self.w_b(hidden) + self.v_b(c_t), dim=1))                        # only for p_gen & src (cur_length, batch_size, candidate_size)
+            alpha.append(alpha_t)
+            c.append(c_t)
+            s.append(hidden)
+        return torch.stack(p), torch.stack(alpha), torch.stack(c), torch.stack(s)

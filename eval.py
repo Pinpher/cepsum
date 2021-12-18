@@ -42,7 +42,7 @@ def rouge_score(data):
 
 def load_file(filename):
     data = []
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding='utf-8') as f:
         for line in f.readlines():
             data.append(json.loads(line))
         f.close()
