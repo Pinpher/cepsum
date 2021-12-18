@@ -97,7 +97,7 @@ class Mymodel(nn.Module):
             cursor = 0
             for key in batch_data[0][i]:
                 h_k_sum = 0
-                for i in range(len(key)):
+                for j in range(len(key)):
                     h_k_sum += h_k[cursor, i]
                     cursor += 1
                 h_k_attr_tmp.append(h_k_sum)

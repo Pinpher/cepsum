@@ -1,18 +1,29 @@
 import os
 import time
+import argparse
 import numpy as np
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from mydataset import *
 from mymodel import *
 
-batch_size = 32
-embed_dim = 300
-hidden_size = 512
-learning_rate = 5e-4
-epoch_num = 10
-model_save_path = "./model"
-name = "copy"
+parser = argparse.ArgumentParser()
+parser.add_argument('--name', type=str, default="copy")
+parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--embed_dim', type=int, default=300)
+parser.add_argument('--hidden_size', type=int, default=512)
+parser.add_argument('--learning_rate', type=float, default=5e-4)
+parser.add_argument('--epoch_num', type=int, default=10)
+parser.add_argument('--model_save_path', type=str, default="./model")
+args = parser.parse_args()
+
+batch_size = args.batch_size
+embed_dim = args.embed_dim
+hidden_size = args.hidden_size
+learning_rate = args.learning_rate
+epoch_num = args.epoch_num
+model_save_path = args.model_save_path
+name = args.name
 
 train_data = MyDataset("data/cut_train.txt")
 valid_data = MyDataset("data/cut_valid.txt")
