@@ -9,8 +9,8 @@ from mymodel import *
 batch_size = 32
 embed_dim = 300
 hidden_size = 512
-learning_rate = 2e-3
-epoch_num = 20
+learning_rate = 1e-3
+epoch_num = 10
 model_save_path = "./model"
 name = "test"
 
