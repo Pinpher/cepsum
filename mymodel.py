@@ -24,7 +24,7 @@ class Mymodel(nn.Module):
         self.s_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
         self.decoder = nn.LSTMCell(input_size=embed_dim, hidden_size=hidden_size)
 
-        self.decoder_s_init = nn.Linear(hidden_size * 2, hidden_size, bias=True)
+        self.decoder_s_init = nn.Linear(hidden_size * 2, hidden_size)
 
         self.w_a = nn.Linear(hidden_size * 2, hidden_size, bias=False)
         self.v_a = nn.Linear(hidden_size, hidden_size, bias=False)
@@ -82,7 +82,7 @@ class Mymodel(nn.Module):
             p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
             # The following line is needed
             mask_i = torch.cat((mask_i[-1:], mask_i[:-1]))      # (max_length, 1)
-            y_i = t_indices[:, i].unsqueeze(-1)                 # (max_length)
+            y_i = t_indices[:, i].unsqueeze(-1)                 # (max_length, 1)
             y_i = torch.masked_select(y_i, mask_i)              # (length_i)
             probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
             loss[i] = torch.mean(-torch.log(probs))
