@@ -12,7 +12,7 @@ hidden_size = 512
 learning_rate = 5e-4
 epoch_num = 10
 model_save_path = "./model"
-name = "test"
+name = "copy"
 
 train_data = MyDataset("data/cut_train.txt")
 valid_data = MyDataset("data/cut_valid.txt")
