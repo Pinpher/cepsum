@@ -31,13 +31,13 @@ class Mymodel(nn.Module):
         self.w_b = nn.Linear(hidden_size, self.candidate_size, bias=False)
         self.v_b = nn.Linear(hidden_size * 2, self.candidate_size, bias=False)
 
-        self.w_d = nn.Linear(hidden_size * 2, 1, bias=False)
+        '''self.w_d = nn.Linear(hidden_size * 2, 1, bias=False)
         self.u_d = nn.Linear(hidden_size, 1, bias=False)
         self.v_d = nn.Linear(hidden_size, 1, bias=False)
 
         self.w_e = nn.Linear(hidden_size * 2, 1, bias=False)
         self.u_e = nn.Linear(hidden_size, 1, bias=False)
-        self.v_e = nn.Linear(hidden_size, 1, bias=False)
+        self.v_e = nn.Linear(hidden_size, 1, bias=False)'''
 
     def forward(self, batch_data):
         # batch_data[0]: (batch_size, num_keys,   num_words_in_key)
@@ -78,7 +78,7 @@ class Mymodel(nn.Module):
             probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
             loss[i] = torch.mean(-torch.log(probs))
 
-        # turn each key into one (1, hidden_size * 2) tensor, like embedding
+        '''# turn each key into one (1, hidden_size * 2) tensor, like embedding
         # another ugly section
         h_k_attr = []
         for i in range(self.batch_size):
@@ -141,8 +141,9 @@ class Mymodel(nn.Module):
         p_copy = gama_t * p_copy_x + (torch.ones(gama_t.shape).to(self.device) - gama_t) * p_copy_v     # (max_tgt_len, batch_size, candidate_size)
 
         lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(y_x))                         # (max_tgt_len, batch_size, 1)
-        p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)
-        return loss, p
+        p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)'''
+        
+        return loss, p_gen
 
     # Decode & Generate
     def decode(self, input_mask, input_h, max_input_len):

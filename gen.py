@@ -8,7 +8,7 @@ from mydataset import *
 from mymodel import *
 from tqdm import tqdm
 
-def filtering(prob, k=50, p=0.8):
+def filtering(prob, k=1, p=1):
     # top-k filtering
     indices_to_remove = prob < torch.topk(prob, k)[0][..., -1, None]
     prob[indices_to_remove] = 0
@@ -30,7 +30,8 @@ def main():
         hidden_size = 512,
         device = "cuda"
     )
-    model.load_state_dict(torch.load("./model/model_test_3"))
+    model.load_state_dict(torch.load("./model/model_test_4"))
+    model.embedding.embedding.load_state_dict(torch.load("./model/model_test_4_embedding"))
     model.to("cuda")
     model.eval()
 
