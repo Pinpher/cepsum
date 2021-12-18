@@ -1,3 +1,6 @@
+# dual copy reserve
+
+import re
 import torch
 from torch._C import device
 import torch.nn as nn
@@ -51,22 +54,11 @@ class Mymodel(nn.Module):
         h_v, _ = self.v_encoder(v_embedding)     # (max_length, batch_size, hidden_size * 2)
         h_s, _ = self.s_encoder(s_embedding)     # (max_length, batch_size, hidden_size * 2)
 
-        # Decode & Generate & Loss
-        hidden_states, p_gen = [], []
-        loss = torch.zeros(self.batch_size).to(self.device)
-        s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
-        y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
         max_tgt_len = max(len(words) for words in tgt_batch)
-        for t in range(1, max_tgt_len + 1):
-            # Decede
-            alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(s))) for h_i in h_s]      # (max_length, batch_size, 1)
-            alpha = F.softmax(torch.stack(alpha).to(self.device) * s_mask, dim=0)           # (max_length, batch_size, 1)
-            ctx = torch.sum(alpha * h_s, dim=0)                         # (batch_size, hidden_size * 2)
-            s, y = self.decoder(ctx, (s, y))                            # s_t and y_t (batch_size, hidden_size)
-            hidden_states.append(s)                                     # (cur_length, batch_size, hidden_size)
-            # Generate
-            p_gen.append(F.softmax(self.w_b(s) + self.v_b(ctx), dim=1)) # (cur_length, batch_size, candidate_size)
+        p_gen, alpha_x, _ = self.decode(s_mask, h_s, max_tgt_len)
 
+        # loss
+        loss = torch.zeros(self.batch_size).to(self.device)
         p_gen = torch.stack(p_gen)
         for i in range(self.batch_size):
             p_i = p_gen[:, i].squeeze(1)                        # (max_length, candidate_size)
@@ -78,4 +70,47 @@ class Mymodel(nn.Module):
             probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
             loss[i] = torch.mean(-torch.log(probs))
 
+        '''# turn each key into one (1, hidden_size * 2) tensor, like embedding
+        # another ugly section
+        h_k_attr = []
+        for i in range(self.batch_size):
+            h_k_attr_tmp = []
+            cursor = 0
+            for key in batch_data[0][i]:
+                tmp1 = 0
+                for i in range(len(key)):
+                    tmp1 += h_k[cursor, i]
+                    cursor += 1
+                h_k_attr_tmp.append(tmp1)
+            h_k_attr.append(h_k_attr_tmp)
+        # h_k_attr now is (batch_size, num_keys, hidden_size * 2)
+
+        # pad & mask for key
+        max_key_len = max(len(keys) for keys in h_k_attr)
+        mask_key_attr = []
+        for i in range(self.batch_size):
+            h_k_attr[i] += [torch.zeros(self.hidden_size * 2).to(self.device)] * (max_key_len - len(h_k_attr[i]))
+            mask_key_attr.append(torch.IntTensor([1] * len(h_k_attr[i]) + [0] * (max_key_len - len(h_k_attr[i]))).to(self.device))
+        h_k_attr = torch.stack([torch.stack(i) for i in h_k_attr]).transpose(0, 1)  # (max_key_length, batch_size, hidden_size * 2)
+        mask_key_attr = torch.stack(mask_key_attr).transpose(0, 1).unsqueeze(-1)    # (max_key_length, batch_size, 1)
+
+        _, alpha_k, c_k = self.decode(mask_key_attr, h_k_attr, max_key_len)'''
+
         return loss, p_gen
+
+    # Decode & Generate
+    def decode(self, input_mask, input_h, max_input_len):
+        p, alpha_per_t, c_per_t = [], [], []
+        s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
+        y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
+        for t in range(1, max_input_len + 1):
+            # Decede
+            alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(s))) for h_i in input_h]      # (max_length, batch_size, 1)
+            alpha = F.softmax(torch.stack(alpha).to(self.device) * input_mask, dim=0)           # (max_length, batch_size, 1)
+            ct = torch.sum(alpha * input_h, dim=0)                      # (batch_size, hidden_size * 2)
+            s, y = self.decoder(ct, (s, y))                             # s_t and y_t (batch_size, hidden_size)
+            alpha_per_t.append(alpha)                                   # (cur_length, max_length, batch_size, 1)
+            c_per_t.append(ct)                                          # (cur_length, hidden_size * 2)
+            # Generate
+            p.append(F.softmax(self.w_b(s) + self.v_b(ct), dim=1))      # only for p_gen & src (cur_length, batch_size, candidate_size)
+        return p, alpha_per_t, c_per_t
