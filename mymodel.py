@@ -171,4 +171,5 @@ class Mymodel(nn.Module):
             #c_per_t.append(ct)                                          # (cur_length, batch_size, hidden_size * 2)
             # Generate
             p.append(F.softmax(self.w_b(hidden) + self.v_b(ct), dim=1))                         # only for p_gen & src (cur_length, batch_size, candidate_size)
-        return torch.stack(p), torch.stack(alpha_per_t), torch.stack(c_per_t), torch.stack(y_per_t), torch.stack(s_per_t)
+        # return torch.stack(p), torch.stack(alpha_per_t), torch.stack(c_per_t), torch.stack(y_per_t), torch.stack(s_per_t)
+        return torch.stack(p), [], [], [], []
