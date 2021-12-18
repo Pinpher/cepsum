@@ -12,11 +12,11 @@ def decode_step(model, hidden, cell, last_word, input_mask, input_h):
     alpha = [model.u_a(torch.tanh(model.w_a(h_i) + model.v_a(hidden))) for h_i in input_h]  # (max_length, batch_size, 1)
     alpha = F.softmax(torch.stack(alpha).to(model.device) * input_mask, dim=0)              # (max_length, batch_size, 1)
     ct = torch.sum(alpha * input_h, dim=0)                                                  # (batch_size, hidden_size * 2)
-    hidden, cell = model.decoder(model.embedding.embed([[last_word]]), (hidden, cell))      # (batch_size, hidden_size)
+    hidden, cell = model.decoder(model.embedding.embed([[last_word]])[0][0], (hidden, cell))   # (batch_size, hidden_size)
     probs = F.softmax(model.w_b(hidden) + model.v_b(ct), dim=1)                             # This is only p_gen 
     return probs, hidden, cell
 
-def filtering(prob, k=1, p=1):
+def filtering(prob, k=50, p=0.8):
     # top-k filtering
     indices_to_remove = prob < torch.topk(prob, k)[0][..., -1, None]
     prob[indices_to_remove] = 0
@@ -38,16 +38,21 @@ def main():
         hidden_size = 512,
         device = "cuda"
     )
-    model.load_state_dict(torch.load("./model/model_test_4"))
-    model.embedding.embedding.load_state_dict(torch.load("./model/model_test_4_embedding"))
+    model.load_state_dict(torch.load("./model/model_copy_3"))
+    model.embedding.embedding.load_state_dict(torch.load("./model/model_copy_3_embedding"))
     model.to("cuda")
     model.eval()
 
     # f is a "cut_" file
+    fout = open("./data/generate_tgt.txt", "w", encoding="utf8")
 
-    with open("./data/cut_train.txt", "r", encoding="utf8") as f:
+    with open("./data/cut_valid.txt", "r", encoding="utf8") as f:
+        last = ""
+        flag = False
         for i, line in tqdm(enumerate(f)):
             keys, values, src, tgt = line.split("\t\t")
+            flag = (last != src)
+            last = src
             keys = [[key.split() for key in keys.split("\t")]]
             values = [[value.split() for value in values.split("\t")]]
             src = [src.split()]
@@ -84,7 +89,12 @@ def main():
                 if last_word  == "[SEP]":
                     break
                 gen_str += last_word
-            print(gen_str)
+            #print(gen_str)
+            if flag:
+                fout.write(gen_str + "\n")
+            
+
+    fout.close()
     
 if __name__ == "__main__":
     main()
