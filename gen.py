@@ -24,16 +24,13 @@ def filtering(prob, k=50, p=0.8):
     return torch.multinomial(prob, 1).long()
 
 def main():
-    #model = torch.load("./model/model_test_2")
-    '''model = Mymodel(
+    model = Mymodel(
         batch_size = 32,
         embed_dim = 300,
-        hidden_size = 1024,
-        candidate_size = 100000,
+        hidden_size = 512,
         device = "cuda"
     )
-    model_dict = torch.load("./model/model_test_2").module.state_dict()
-    model.load_state_dict(model_dict)
+    model.load_state_dict(torch.load("./model/model_test_3"))
     model.to("cuda")
     model.eval()
 
@@ -53,8 +50,10 @@ def main():
             for probs in p_gen:         # (candidate_size)
                 index = filtering(probs.detach())
                 word = embedding.getWord(index)
+                if word == "[SEP]":
+                    break
                 gen_str += word
-            print(gen_str)'''
+            print(gen_str)
     
 if __name__ == "__main__":
     main()
