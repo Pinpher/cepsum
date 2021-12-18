@@ -75,20 +75,6 @@ class Mymodel(nn.Module):
         max_v_len = max(len(words) for words in value_batch)
         p_gen, alpha_x, c_x, s_x = self.decode(decoder_s_h0, decoder_s_c0, t_embedding, s_mask, h_s, max_tgt_len)
 
-        # loss
-        loss = torch.zeros(self.batch_size).to(self.device)
-        for i in range(self.batch_size):
-            p_i = p_gen[:, i].squeeze(1)                            # (max_length, candidate_size)
-            mask_i = t_mask[:, i]                               # (max_length, 1)
-            p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
-            p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
-            # The following line is needed
-            mask_i = torch.cat((mask_i[-1:], mask_i[:-1]))      # (max_length, 1)
-            y_i = t_indices[:, i].unsqueeze(-1)                 # (max_length, 1)
-            y_i = torch.masked_select(y_i, mask_i)              # (length_i)
-            probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
-            loss[i] = torch.mean(-torch.log(probs))
-
         # turn each key into one (1, hidden_size * 2) tensor, like embedding
         # another ugly section
         h_k_attr = []
@@ -160,7 +146,21 @@ class Mymodel(nn.Module):
 
         lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(t_embedding))                         # (max_tgt_len, batch_size, 1)
         p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)
-        
+
+        # loss
+        loss = torch.zeros(self.batch_size).to(self.device)
+        for i in range(self.batch_size):
+            p_i = p[:, i].squeeze(1)                        # (max_length, candidate_size)
+            mask_i = t_mask[:, i]                               # (max_length, 1)
+            p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
+            p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
+            # The following line is needed
+            mask_i = torch.cat((mask_i[-1:], mask_i[:-1]))      # (max_length, 1)
+            y_i = t_indices[:, i].unsqueeze(-1)                 # (max_length, 1)
+            y_i = torch.masked_select(y_i, mask_i)              # (length_i)
+            probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
+            loss[i] = torch.mean(-torch.log(probs))
+
         return loss, p
 
     # Attention & Decode & Generate
