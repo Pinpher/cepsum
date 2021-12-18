@@ -22,7 +22,9 @@ class Mymodel(nn.Module):
         self.k_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
         self.v_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
         self.s_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
-        self.decoder = nn.LSTMCell(input_size=hidden_size * 2, hidden_size=hidden_size)
+        self.decoder = nn.LSTMCell(input_size=embed_dim, hidden_size=hidden_size)
+
+        self.decoder_s_init = nn.Linear(hidden_size * 2, hidden_size, bias=True)
 
         self.w_a = nn.Linear(hidden_size * 2, hidden_size, bias=False)
         self.v_a = nn.Linear(hidden_size, hidden_size, bias=False)
@@ -51,28 +53,35 @@ class Mymodel(nn.Module):
         src_batch = batch_data[2]                           # (batch_size, num_words)
         tgt_batch = batch_data[3]                           # (batch_size, num_words)
 
-        k_embedding, k_mask, _ = self.embedding.embed(key_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
+        k_embedding, k_mask, k_indices = self.embedding.embed(key_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
         v_embedding, v_mask, v_indices = self.embedding.embed(value_batch)  # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
         s_embedding, s_mask, s_indices = self.embedding.embed(src_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
         t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
 
         # Encode
-        h_k, _ = self.k_encoder(k_embedding)     # (max_length, batch_size, hidden_size * 2)
-        h_v, _ = self.v_encoder(v_embedding)     # (max_length, batch_size, hidden_size * 2)
-        h_s, _ = self.s_encoder(s_embedding)     # (max_length, batch_size, hidden_size * 2)
+        h_k, state_k = self.k_encoder(k_embedding)              # (max_length, batch_size, hidden_size * 2)
+        h_v, state_v = self.v_encoder(v_embedding)              # (max_length, batch_size, hidden_size * 2)
+        h_s, state_s = self.s_encoder(s_embedding)              # (max_length, batch_size, hidden_size * 2)
 
+        # Decoder init state
+        cell_s = torch.cat(state_s[1], dim=1)                   # (batch_size, hidden_size * 2)
+        decoder_s_c0 = self.decoder_s_init(cell_s)              # (batch_size, hidden_size)
+        decoder_s_h0 = torch.tanh(decoder_s_c0)                 # (batch_size, hidden_size)
+
+        # Decode
         max_tgt_len = max(len(words) for words in tgt_batch)
         max_v_len = max(len(words) for words in value_batch)
-        p_gen, alpha_x, c_x, y_x, s_x = self.decode(s_mask, h_s, max_tgt_len)
+        p, alpha_x, c_x, y_x, s_x = self.decode(decoder_s_h0, decoder_s_c0, t_embedding, s_mask, h_s, max_tgt_len)
 
         # loss
         loss = torch.zeros(self.batch_size).to(self.device)
-        p_gen = torch.stack(p_gen)
         for i in range(self.batch_size):
-            p_i = p_gen[:, i].squeeze(1)                        # (max_length, candidate_size)
+            p_i = p[:, i].squeeze(1)                            # (max_length, candidate_size)
             mask_i = t_mask[:, i]                               # (max_length, 1)
             p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
             p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
+            # The following line is needed
+            mask_i = torch.cat((mask_i[-1:], mask_i[:-1]))      # (max_length, 1)
             y_i = t_indices[:, i].unsqueeze(-1)                 # (max_length)
             y_i = torch.masked_select(y_i, mask_i)              # (length_i)
             probs = p_i[range(len(y_i)), y_i.long()]            # (length_i)
@@ -146,20 +155,20 @@ class Mymodel(nn.Module):
         return loss, p_gen
 
     # Decode & Generate
-    def decode(self, input_mask, input_h, max_input_len):
-        p, alpha_per_t, c_per_t, y_per_t, s_per_t = [], [], [], [], []       
-        s = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # s_0
-        y = torch.zeros(self.batch_size, self.hidden_size).to(self.device) # y_0
-        for t in range(1, max_input_len + 1):
-            y_per_t.append(y)                                           # y_per_t indicates y_(t-1) (cur_length, batch_size, hidden_size)
-            # Decede
-            alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(s))) for h_i in input_h]      # (max_length, batch_size, 1)
+    def decode(self, hidden, cell, t_embedding, input_mask, input_h, max_input_len):
+        p, alpha_per_t, c_per_t, y_per_t, s_per_t = [], [], [], [], []
+        # For each target word
+        for t in range(max_input_len):
+            # y_per_t.append(y)                                           # y_per_t indicates y_(t-1) (cur_length, batch_size, hidden_size)
+            
+            # Decode
+            alpha = [self.u_a(torch.tanh(self.w_a(h_i) + self.v_a(hidden))) for h_i in input_h] # (max_length, batch_size, 1)
             alpha = F.softmax(torch.stack(alpha).to(self.device) * input_mask, dim=0)           # (max_length, batch_size, 1)
-            ct = torch.sum(alpha * input_h, dim=0)                      # (batch_size, hidden_size * 2)
-            s, y = self.decoder(ct, (s, y))                             # s_t and y_t (batch_size, hidden_size)
-            s_per_t.append(s)                                           # (cur_length, batch_size, hidden_size)
-            alpha_per_t.append(alpha)                                   # (cur_length, max_length, batch_size, 1)
-            c_per_t.append(ct)                                          # (cur_length, batch_size, hidden_size * 2)
+            ct = torch.sum(alpha * input_h, dim=0)                                              # (batch_size, hidden_size * 2)
+            hidden, cell = self.decoder(t_embedding[t], (hidden, cell))                         # (batch_size, hidden_size)
+            #s_per_t.append(s)                                           # (cur_length, batch_size, hidden_size)
+            #alpha_per_t.append(alpha)                                   # (cur_length, max_length, batch_size, 1)
+            #c_per_t.append(ct)                                          # (cur_length, batch_size, hidden_size * 2)
             # Generate
-            p.append(F.softmax(self.w_b(s) + self.v_b(ct), dim=1))      # only for p_gen & src (cur_length, batch_size, candidate_size)
-        return p, torch.stack(alpha_per_t), torch.stack(c_per_t), torch.stack(y_per_t), torch.stack(s_per_t)
+            p.append(F.softmax(self.w_b(hidden) + self.v_b(ct), dim=1))                         # only for p_gen & src (cur_length, batch_size, candidate_size)
+        return torch.stack(p), torch.stack(alpha_per_t), torch.stack(c_per_t), torch.stack(y_per_t), torch.stack(s_per_t)

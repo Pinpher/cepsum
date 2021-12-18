@@ -26,7 +26,6 @@ class MyEmbedding:
             indices = [self.wordToIndex[word] for word in words]
             indices += [self.sepId] * (max_len - len(words))            
             batch_mask.append(torch.IntTensor(indices) != self.sepId)
-            indices = indices[1:] + [self.sepId]
             batch_embedding.append(self.embedding(torch.IntTensor(indices)))
             batch_indices.append(torch.IntTensor(indices))
         batch_embedding = torch.stack(batch_embedding, dim=1).to(self.device)       # (max_length, batch_size, embed_dim)
