@@ -152,7 +152,7 @@ class Mymodel(nn.Module):
         lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(y_x))                         # (max_tgt_len, batch_size, 1)
         p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)'''
         
-        return loss, p_gen
+        return loss, p
 
     # Decode & Generate
     def decode(self, hidden, cell, t_embedding, input_mask, input_h, max_input_len):
