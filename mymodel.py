@@ -64,7 +64,7 @@ class Mymodel(nn.Module):
         h_s, state_s = self.s_encoder(s_embedding)              # (max_length, batch_size, hidden_size * 2)
 
         # Decoder init state
-        cell_s = torch.cat(state_s[1], dim=1)                   # (batch_size, hidden_size * 2)
+        cell_s = torch.cat(list(state_s[1]), dim=1)             # (batch_size, hidden_size * 2)
         decoder_s_c0 = self.decoder_s_init(cell_s)              # (batch_size, hidden_size)
         decoder_s_h0 = torch.tanh(decoder_s_c0)                 # (batch_size, hidden_size)
 
