@@ -54,8 +54,9 @@ def main():
         print("Epoch " + str(epoch) + " finished, took " + str(time.time() - start_time) + "s", flush=True)
         print("valid loss " + str(np.mean(valid_losses)), flush=True)
 
-        with open(os.path.join(model_save_path, "model_%s_%d" % (name, epoch)), "wb") as f:
-            torch.save(model.module.state_dict(), f)
-    
+        path = os.path.join(model_save_path, "model_%s_%d" % (name, epoch))
+        torch.save(model.module.state_dict(), path)
+        torch.save(model.module.embedding.embedding.state_dict(), path + "_embedding")
+
 if __name__ == "__main__":
     main()

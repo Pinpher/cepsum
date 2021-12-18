@@ -16,7 +16,7 @@ class MyEmbedding:
                 self.wordToIndex[values[0]] = i
                 vector = list(map(float, values[1:]))
                 embeddings.append(torch.Tensor(vector))
-        self.embedding = nn.Embedding.from_pretrained(torch.stack(embeddings))
+        self.embedding = nn.Embedding.from_pretrained(torch.stack(embeddings), freeze=False)
         self.sepId = self.wordToIndex['[SEP]']
     
     def embed(self, batch):
