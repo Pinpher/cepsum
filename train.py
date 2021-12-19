@@ -8,7 +8,7 @@ from mydataset import *
 from mymodel import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', type=str, default="copy")
+parser.add_argument('--name', type=str, default="only_copy")
 parser.add_argument('--batch_size', type=int, default=32)
 parser.add_argument('--embed_dim', type=int, default=300)
 parser.add_argument('--hidden_size', type=int, default=512)
@@ -16,6 +16,7 @@ parser.add_argument('--learning_rate', type=float, default=5e-4)
 parser.add_argument('--epoch_num', type=int, default=10)
 parser.add_argument('--model_save_path', type=str, default="./model")
 parser.add_argument('--resume', type=str, default=None)
+parser.add_argument('--attri_words_path', type=str, default='./vocab/attr_words.txt')
 args = parser.parse_args()
 
 batch_size = args.batch_size
@@ -24,6 +25,7 @@ hidden_size = args.hidden_size
 learning_rate = args.learning_rate
 epoch_num = args.epoch_num
 model_save_path = args.model_save_path
+attri_words_path = args.attri_words_path
 name = args.name
 
 train_data = MyDataset("data/cut_train.txt")
@@ -38,7 +40,8 @@ def main():
         batch_size = batch_size,
         embed_dim = embed_dim,
         hidden_size = hidden_size,
-        device = device
+        device = device,
+        attri_words_path = attri_words_path
     )
 
     if args.resume:
