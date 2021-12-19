@@ -72,8 +72,8 @@ def main():
         print("valid loss " + str(np.mean(valid_losses)), flush=True)
 
         path = os.path.join(model_save_path, "model_%s_%d" % (name, epoch))
-        torch.save(model.module.state_dict(), path)
-        torch.save(model.module.embedding.embedding.state_dict(), path + "_embedding")
+        torch.save(model.state_dict(), path)
+        torch.save(model.embedding.embedding.state_dict(), path + "_embedding")
 
 if __name__ == "__main__":
     main()
