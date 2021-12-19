@@ -1,5 +1,6 @@
 import torch
 import json
+import argparse
 from torch.nn.functional import embedding
 from torch.utils.data import DataLoader
 from myvocabulary import *
@@ -7,6 +8,14 @@ from myembedding import *
 from mydataset import *
 from mymodel import *
 from tqdm import tqdm
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--module_dict', type=str, default="./model/model_copy_7")
+parser.add_argument('--embedding_dict', type=str, default="./model/model_copy_7_embedding")
+parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
+parser.add_argument('--output_path', type=str, default="./data/gen_copy_valid.txt")
+args = parser.parse_args()
+
 
 def decode_step(model, hidden, cell, last_word, input_mask, input_h):
     alpha = [model.u_a(torch.tanh(model.w_a(h_i) + model.v_a(hidden))) for h_i in input_h]  # (max_length, batch_size, 1)
@@ -38,15 +47,15 @@ def main():
         hidden_size = 512,
         device = "cuda"
     )
-    model.load_state_dict(torch.load("./model/model_copy_7"))
-    model.embedding.embedding.load_state_dict(torch.load("./model/model_copy_7_embedding"))
+    model.load_state_dict(torch.load(args.module_dict))
+    model.embedding.embedding.load_state_dict(torch.load(args.embedding_dict))
     model.to("cuda")
     model.eval()
 
     # f is a "cut_" file
-    fout = open("./data/gen_copy_valid.txt", "w", encoding="utf8")
+    fout = open(args.output_path, "w", encoding="utf8")
 
-    with open("./data/cut_valid.txt", "r", encoding="utf8") as f:
+    with open(args.input_path, "r", encoding="utf8") as f:
         last = ""
         flag = False
         for i, line in tqdm(enumerate(f)):
