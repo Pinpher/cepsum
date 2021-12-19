@@ -14,7 +14,7 @@ def decode_step(model, hidden, cell, last_word, input_mask, input_h):
     ct = torch.sum(alpha * input_h, dim=0)                                                  # (batch_size, hidden_size * 2)
     hidden, cell = model.decoder(model.embedding.embed([[last_word]])[0][0], (hidden, cell))   # (batch_size, hidden_size)
     probs = F.softmax(model.w_b(hidden) + model.v_b(ct), dim=1)                             # This is only p_gen 
-    return probs, hidden, cell
+    return probs, hidden, cell, alpha, ct
 
 def filtering(prob, k=50, p=0.8):
     # top-k filtering
@@ -38,13 +38,13 @@ def main():
         hidden_size = 512,
         device = "cuda"
     )
-    model.load_state_dict(torch.load("./model/model_copy_3"))
-    model.embedding.embedding.load_state_dict(torch.load("./model/model_copy_3_embedding"))
+    model.load_state_dict(torch.load("./model/model_copy_7"))
+    model.embedding.embedding.load_state_dict(torch.load("./model/model_copy_7_embedding"))
     model.to("cuda")
     model.eval()
 
     # f is a "cut_" file
-    fout = open("./data/generate_tgt.txt", "w", encoding="utf8")
+    fout = open("./data/gen_copy_test.txt", "w", encoding="utf8")
 
     with open("./data/cut_test.txt", "r", encoding="utf8") as f:
         last = ""
@@ -77,23 +77,89 @@ def main():
             decoder_s_c0 = model.decoder_s_init(cell_s)             # (batch_size, hidden_size)
             decoder_s_h0 = torch.tanh(decoder_s_c0)                 # (batch_size, hidden_size)
 
+            # Decoder key & value init state
+            cell_k = torch.cat(list(state_k[1]), dim=1)             # (batch_size, hidden_size * 2)
+            decoder_k_c0 = model.decoder_k_init(cell_k)             # (batch_size, hidden_size)
+            decoder_k_h0 = torch.tanh(decoder_k_c0)                 # (batch_size, hidden_size)
+            cell_v = torch.cat(list(state_v[1]), dim=1)             # (batch_size, hidden_size * 2)
+            decoder_v_c0 = model.decoder_v_init(cell_v)             # (batch_size, hidden_size)
+            decoder_v_h0 = torch.tanh(decoder_v_c0)                 # (batch_size, hidden_size)
+
+            # turn each key into one (1, hidden_size * 2) tensor, like embedding
+            # another ugly section
+            h_k_attr = []
+            h_k_attr_tmp = []
+            cursor = 0
+            for key in batch_data[0][0]:
+                h_k_sum = 0
+                for j in range(len(key)):
+                    h_k_sum += h_k[cursor, 0]
+                    cursor += 1
+                h_k_attr_tmp.append(h_k_sum)
+            h_k_attr.append(h_k_attr_tmp)
+            # h_k_attr now is (batch_size, num_keys, hidden_size * 2)
+
+            # pad & mask for key
+            max_key_len = max(len(keys) for keys in h_k_attr)
+            mask_key_attr = []
+            h_k_attr[0] += [torch.zeros(model.hidden_size * 2).to(model.device)] * (max_key_len - len(h_k_attr[0]))
+            mask_key_attr.append(torch.IntTensor([1] * len(h_k_attr[0]) + [0] * (max_key_len - len(h_k_attr[0]))).to(model.device))
+            h_k_attr = torch.stack([torch.stack(i) for i in h_k_attr]).transpose(0, 1)  # (max_key_length, batch_size, hidden_size * 2)
+            mask_key_attr = torch.stack(mask_key_attr).transpose(0, 1).unsqueeze(-1)    # (max_key_length, batch_size, 1)
+
             # Generate
             gen_str = ""
             last_word = "[CLS]"
             max_tgt_len = 128
-            h, c = decoder_s_h0, decoder_s_c0 
+            hidden_s, cell_s = decoder_s_h0, decoder_s_c0 
+            hidden_k, cell_k = decoder_k_h0, decoder_k_c0 
+            hidden_v, cell_v = decoder_v_h0, decoder_v_c0 
             for i in range(max_tgt_len):
-                probs, h, c = decode_step(model, h, c, last_word, s_mask, h_s)
+                # p_gen
+                probs_gen, hidden_s, cell_s, alpha_x, c_x = decode_step(model, hidden_s, cell_s, last_word, s_mask, h_s)
+                
+                # p_copy_x
+                probs_copy_x = torch.zeros(1, model.candidate_size).to(model.device)
+                for i, index in enumerate(s_indices):
+                    mask = s_mask[i].squeeze(-1)    # (batch_size)
+                    probs_copy_x[range(1), index.long()] += (alpha_x[i].squeeze(-1) * mask)    # (batch_size, candidate_size)
+
+                # p_copy_v
+                _, hidden_k, cell_k, alpha_k, c_k = decode_step(model, hidden_k, cell_k, last_word, mask_key_attr, h_k_attr)
+                _, hidden_v, cell_v, alpha_v, c_v = decode_step(model, hidden_v, cell_v, last_word, v_mask, h_v)
+                probs_copy_v = torch.zeros(1, model.candidate_size).to(model.device)    # (batch_size, candidate_size)
+                attr_i, attr_j = 0, 0
+                attr_sizes = [len(value) for value in batch_data[1][0]]                 # (num_keys)
+                for i, index in enumerate(v_indices[:,0]):
+                    if index == model.embedding.sepId:
+                        break
+                    if attr_j == attr_sizes[attr_i]:
+                        attr_i += 1
+                        attr_j = 0                    
+                    mask_k = k_mask[attr_i][0].squeeze(-1)    # (1)
+                    mask_v = v_mask[i][0].squeeze(-1)         # (1)
+                    probs_copy_v[0, index.long()] += (alpha_k[attr_i][0].squeeze(-1) * mask_k) * (alpha_v[i][0].squeeze(-1) * mask_v)    # (batch_size, candidate_size)
+                    attr_j += 1
+
+                gamma_t = torch.sigmoid(model.w_d(c_k) + model.w_d(c_x) + model.u_d(hidden_s) + model.v_d(model.embedding.embed([[last_word]])[0][0]))          # (batch_size, 1)
+                probs_copy = gamma_t * probs_copy_x + (torch.ones(gamma_t.shape).to(model.device) - gamma_t) * probs_copy_v                                     # (batch_size, candidate_size)
+
+                lambda_t = torch.sigmoid(model.w_e(c_x) + model.u_e(hidden_s) + model.v_e(model.embedding.embed([[last_word]])[0][0]))                          # (batch_size, 1)
+                probs = lambda_t * probs_gen +  (torch.ones(lambda_t.shape).to(model.device) - lambda_t) * probs_copy                                           # (batch_size, candidate_size)
+
+                # final probs
                 index = filtering(probs.squeeze(0).detach())
                 last_word = model.embedding.getWord(index)
                 if last_word  == "[SEP]":
                     break
+                if last_word  == "[UNK]":
+                    continue
                 gen_str += last_word
             #print(gen_str)
             if flag:
+                #print(gen_str)
                 fout.write(gen_str + "\n")
             
-
     fout.close()
     
 if __name__ == "__main__":
