@@ -32,8 +32,9 @@ class Mymodel(nn.Module):
         self.v_a = nn.Linear(hidden_size, hidden_size, bias=False)
         self.u_a = nn.Linear(hidden_size, 1, bias=False)
 
-        self.w_b = nn.Linear(hidden_size, self.candidate_size, bias=False)
-        self.v_b = nn.Linear(hidden_size * 2, self.candidate_size, bias=False)
+        self.w_b = nn.Linear(hidden_size, hidden_size, bias=False)
+        self.v_b = nn.Linear(hidden_size * 2, hidden_size, bias=False)
+        self.u_b = nn.Linear(hidden_size, self.candidate_size, bias=False)
 
         self.w_d = nn.Linear(hidden_size * 2, 1, bias=False)
         self.u_d = nn.Linear(hidden_size, 1, bias=False)
@@ -43,13 +44,15 @@ class Mymodel(nn.Module):
         self.u_e = nn.Linear(hidden_size, 1, bias=False)
         self.v_e = nn.Linear(embed_dim, 1, bias=False)
 
+        self.v_e = nn.Linear(embed_dim, 1, bias=False)
+
         attr_file = open(attri_words_path, "r", encoding='utf-8')
         attr_words = attr_file.readlines()                              # (attr_word_num)
         attr_file.close()
         _, _, attr_words_indices = self.embedding.embed([attr_words])   # (attr_word_num, 1)
         attr_words_indices = attr_words_indices.squeeze(-1)
         self.candidate_mask = torch.ones(self.candidate_size)
-        self.candidate_mask[attr_words_indices.long()] = 0              # (candidate_size)
+        self.candidate_mask[attr_words_indices.long()] = 1e-9           # (candidate_size)
 
     def forward(self, batch_data):
         # batch_data[0]: (batch_size, num_keys,   num_words_in_key)
@@ -189,7 +192,8 @@ class Mymodel(nn.Module):
 
         if batch_candidate_mask != None:
             for t in range(max_input_len):
-                p.append((F.softmax(self.w_b(s[t]) + self.v_b(c[t]), dim=1)) * batch_candidate_mask)    # only for p_gen & src (cur_length, batch_size, candidate_size)
+                logits = self.u_b(torch.tanh(self.w_b(s[t]) + self.v_b(c[t])))
+                p.append(F.softmax(logits, dim=1) * batch_candidate_mask)           # only for p_gen & src (cur_length, batch_size, candidate_size)
             return torch.stack(p), torch.stack(alpha), torch.stack(c), torch.stack(s)
         else:
             return 0, torch.stack(alpha), torch.stack(c), torch.stack(s)
