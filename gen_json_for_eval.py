@@ -1,8 +1,8 @@
 import json
 
-f1 = open('./data/test_public.jsonl', "r", encoding='utf-8')
-f2 = open('./data/generate_tgt.txt', "r", encoding='utf-8')
-f3 = open('./data/generated.jsonl', "w", encoding='utf-8')
+f1 = open('./data/valid.jsonl', "r", encoding='utf-8')
+f2 = open('./data/gen_copy_valid.txt', "r", encoding='utf-8')
+f3 = open('./data/gen_copy_valid.jsonl', "w", encoding='utf-8')
 f1_lines = f1.readlines()
 f2_lines = f2.readlines()
 

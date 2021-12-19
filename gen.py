@@ -44,9 +44,9 @@ def main():
     model.eval()
 
     # f is a "cut_" file
-    fout = open("./data/gen_copy_test.txt", "w", encoding="utf8")
+    fout = open("./data/gen_copy_valid.txt", "w", encoding="utf8")
 
-    with open("./data/cut_test.txt", "r", encoding="utf8") as f:
+    with open("./data/cut_valid.txt", "r", encoding="utf8") as f:
         last = ""
         flag = False
         for i, line in tqdm(enumerate(f)):
