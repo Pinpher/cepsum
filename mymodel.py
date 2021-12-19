@@ -193,7 +193,7 @@ class Mymodel(nn.Module):
         if batch_candidate_mask != None:
             for t in range(max_input_len):
                 logits = self.u_b(torch.tanh(self.w_b(s[t]) + self.v_b(c[t])))
-                logits = torch.masked_fill(logits, batch_candidate_mask, -float('inf'))
+                logits = torch.masked_fill(logits, batch_candidate_mask.bool(), -float('inf'))
                 # only for p_gen & src (cur_length, batch_size, candidate_size)
                 p.append(F.softmax(logits, dim=1))
             return torch.stack(p), torch.stack(alpha), torch.stack(c), torch.stack(s)
