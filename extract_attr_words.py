@@ -19,7 +19,7 @@ def process(file):
 
 process("data/cut_train.txt")
 process("data/cut_valid.txt")
-attr_words = all_words - general_words
+attr_words = all_words - general_words - set(["[UNK]", "[CLS]", "[SEP]"])
 with open("vocab/attr_words.txt", "w", encoding="utf-8") as f:
     f.write("\n".join(list(attr_words)))
 
