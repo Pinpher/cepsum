@@ -51,8 +51,8 @@ class Mymodel(nn.Module):
         attr_file.close()
         _, _, attr_words_indices = self.embedding.embed([attr_words])   # (attr_word_num, 1)
         attr_words_indices = attr_words_indices.squeeze(-1)
-        self.candidate_mask = torch.ones(self.candidate_size)
-        self.candidate_mask[attr_words_indices.long()] = 1e-9           # (candidate_size)
+        self.candidate_mask = torch.zeros(self.candidate_size)
+        self.candidate_mask[attr_words_indices.long()] = 1              # (candidate_size)
 
     def forward(self, batch_data):
         # batch_data[0]: (batch_size, num_keys,   num_words_in_key)
@@ -60,7 +60,7 @@ class Mymodel(nn.Module):
         # batch_data[2]: (batch_size,             num_words_in_src)
         # batch_data[3]: (batch_size,             num_words_in_tgt)
         self.batch_size = len(batch_data[0])
-        batch_candidate_mask = torch.stack([self.candidate_mask for i in range(self.batch_size)], dim=0).to(self.device)
+        batch_candidate_mask = torch.stack([self.candidate_mask] * self.batch_size, dim=0).to(self.device)
 
         key_batch = [sum(i, []) for i in batch_data[0]]     # (batch_size, num_words)
         value_batch = [sum(i, []) for i in batch_data[1]]   # (batch_size, num_words)
@@ -153,16 +153,16 @@ class Mymodel(nn.Module):
             p_copy_v.append(p_copy_v_per_t)
         p_copy_v = torch.stack(p_copy_v)    # (max_tgt_len, batch_size, candidate_size)
 
-        gama_t = torch.sigmoid(self.w_d(c_k) + self.w_d(c_x) + self.u_d(s_x) + self.v_d(t_embedding))           # (max_tgt_len, batch_size, 1)
-        p_copy = gama_t * p_copy_x + (torch.ones(gama_t.shape).to(self.device) - gama_t) * p_copy_v     # (max_tgt_len, batch_size, candidate_size)
+        gamma_t = torch.sigmoid(self.w_d(c_k) + self.w_d(c_x) + self.u_d(s_x) + self.v_d(t_embedding))  # (max_tgt_len, batch_size, 1)
+        p_copy = gamma_t * p_copy_x + (torch.ones(gamma_t.shape).to(self.device) - gamma_t) * p_copy_v  # (max_tgt_len, batch_size, candidate_size)
 
-        lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(t_embedding))                         # (max_tgt_len, batch_size, 1)
+        lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(t_embedding))                 # (max_tgt_len, batch_size, 1)
         p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)
 
         # loss
         loss = torch.zeros(self.batch_size).to(self.device)
         for i in range(self.batch_size):
-            p_i = p[:, i].squeeze(1)                        # (max_length, candidate_size)
+            p_i = p[:, i].squeeze(1)                            # (max_length, candidate_size)
             mask_i = t_mask[:, i]                               # (max_length, 1)
             p_i = torch.masked_select(p_i, mask_i)              # (length_i * candidate_size)
             p_i = p_i.reshape(-1, self.candidate_size)          # (length_i, candidate_size)
@@ -193,7 +193,9 @@ class Mymodel(nn.Module):
         if batch_candidate_mask != None:
             for t in range(max_input_len):
                 logits = self.u_b(torch.tanh(self.w_b(s[t]) + self.v_b(c[t])))
-                p.append(F.softmax(logits, dim=1) * batch_candidate_mask)           # only for p_gen & src (cur_length, batch_size, candidate_size)
+                logits = torch.masked_fill(logits, batch_candidate_mask, -float('inf'))
+                # only for p_gen & src (cur_length, batch_size, candidate_size)
+                p.append(F.softmax(logits, dim=1))
             return torch.stack(p), torch.stack(alpha), torch.stack(c), torch.stack(s)
         else:
             return 0, torch.stack(alpha), torch.stack(c), torch.stack(s)
