@@ -15,6 +15,7 @@ parser.add_argument('--hidden_size', type=int, default=512)
 parser.add_argument('--learning_rate', type=float, default=5e-4)
 parser.add_argument('--epoch_num', type=int, default=10)
 parser.add_argument('--model_save_path', type=str, default="./model")
+parser.add_argument('--resume', type=str, default=None)
 args = parser.parse_args()
 
 batch_size = args.batch_size
@@ -39,7 +40,12 @@ def main():
         hidden_size = hidden_size,
         device = device
     )
-    model = nn.DataParallel(model.to(device))
+
+    if args.resume:
+        model.load_state_dict(torch.load(args.resume))
+        model.embedding.embedding.load_state_dict(torch.load(args.resume + "_embedding"))
+
+    model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0)
 
     for epoch in range(1, epoch_num + 1):
