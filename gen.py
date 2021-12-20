@@ -70,6 +70,10 @@ def main():
             keys, values, src, tgt = line.split("\t\t")
             flag = (last != src)
             last = src
+
+            if not flag:
+                continue
+            
             keys = [[key.split() for key in keys.split("\t")]]
             values = [[value.split() for value in values.split("\t")]]
             src = [src.split()]
