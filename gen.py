@@ -14,6 +14,7 @@ parser.add_argument('--module_dict', type=str, default="./model/model_copy_7")
 parser.add_argument('--embedding_dict', type=str, default="./model/model_copy_7_embedding")
 parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
 parser.add_argument('--output_path', type=str, default="./data/gen_copy_valid.txt")
+parser.add_argument('--attri_words_path', type=str, default='./vocab/attr_words.txt')
 args = parser.parse_args()
 
 
@@ -45,7 +46,8 @@ def main():
         batch_size = 32,
         embed_dim = 300,
         hidden_size = 512,
-        device = "cuda"
+        device = "cuda",
+        attri_words_path = args.attri_words_path
     )
     model.load_state_dict(torch.load(args.module_dict))
     model.embedding.embedding.load_state_dict(torch.load(args.embedding_dict))
