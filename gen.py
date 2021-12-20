@@ -10,21 +10,27 @@ from mymodel import *
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--module_dict', type=str, default="./model/model_copy_7")
-parser.add_argument('--embedding_dict', type=str, default="./model/model_copy_7_embedding")
-parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
-parser.add_argument('--output_path', type=str, default="./data/gen_copy_valid.txt")
+parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_7")
+parser.add_argument('--embedding_dict', type=str, default="./model/model_only_copy_7_embedding")
+parser.add_argument('--input_path', type=str, default="./data/cut_test.txt")
+parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_test.txt")
 parser.add_argument('--attri_words_path', type=str, default='./vocab/attr_words.txt')
 args = parser.parse_args()
 
 
-def decode_step(model, hidden, cell, last_word, input_mask, input_h):
+def decode_step(model, hidden, cell, last_word, input_mask, input_h, candidate_mask):
     alpha = [model.u_a(torch.tanh(model.w_a(h_i) + model.v_a(hidden))) for h_i in input_h]  # (max_length, batch_size, 1)
     alpha = F.softmax(torch.stack(alpha).to(model.device) * input_mask, dim=0)              # (max_length, batch_size, 1)
     ct = torch.sum(alpha * input_h, dim=0)                                                  # (batch_size, hidden_size * 2)
     hidden, cell = model.decoder(model.embedding.embed([[last_word]])[0][0], (hidden, cell))   # (batch_size, hidden_size)
-    probs = F.softmax(model.w_b(hidden) + model.v_b(ct), dim=1)                             # This is only p_gen 
-    return probs, hidden, cell, alpha, ct
+    
+    if candidate_mask != None:
+        logits = model.u_b(model.dropout(torch.tanh(model.w_b(hidden) + model.v_b(ct))))
+        logits = torch.masked_fill(logits, candidate_mask.bool(), -float('inf'))
+        probs = F.softmax(logits, dim=1)
+        return probs, hidden, cell, alpha, ct
+    else:
+        return 0, hidden, cell, alpha, ct
 
 def filtering(prob, k=50, p=0.8):
     # top-k filtering
@@ -127,7 +133,7 @@ def main():
             hidden_v, cell_v = decoder_v_h0, decoder_v_c0 
             for i in range(max_tgt_len):
                 # p_gen
-                probs_gen, hidden_s, cell_s, alpha_x, c_x = decode_step(model, hidden_s, cell_s, last_word, s_mask, h_s)
+                probs_gen, hidden_s, cell_s, alpha_x, c_x = decode_step(model, hidden_s, cell_s, last_word, s_mask, h_s, model.candidate_mask.to(model.device))
                 
                 # p_copy_x
                 probs_copy_x = torch.zeros(1, model.candidate_size).to(model.device)
@@ -136,8 +142,8 @@ def main():
                     probs_copy_x[range(1), index.long()] += (alpha_x[i].squeeze(-1) * mask)    # (batch_size, candidate_size)
 
                 # p_copy_v
-                _, hidden_k, cell_k, alpha_k, c_k = decode_step(model, hidden_k, cell_k, last_word, mask_key_attr, h_k_attr)
-                _, hidden_v, cell_v, alpha_v, c_v = decode_step(model, hidden_v, cell_v, last_word, v_mask, h_v)
+                _, hidden_k, cell_k, alpha_k, c_k = decode_step(model, hidden_k, cell_k, last_word, mask_key_attr, h_k_attr, None)
+                _, hidden_v, cell_v, alpha_v, c_v = decode_step(model, hidden_v, cell_v, last_word, v_mask, h_v, None)
                 probs_copy_v = torch.zeros(1, model.candidate_size).to(model.device)    # (batch_size, candidate_size)
                 attr_i, attr_j = 0, 0
                 attr_sizes = [len(value) for value in batch_data[1][0]]                 # (num_keys)
