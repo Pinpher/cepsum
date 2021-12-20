@@ -35,8 +35,10 @@ def decode_step(model, hidden, cell, last_word, input_mask, input_h, candidate_m
 
 def filtering(prob, k=50, p=0.8):
     # top-k filtering
-    indices_to_remove = prob < torch.topk(prob, k)[0][..., -1, None]
-    prob[indices_to_remove] = 0
+    if k > 0:
+        indices_to_remove = prob < torch.topk(prob, k)[0][..., -1, None]
+        prob[indices_to_remove] = 0
+        prob = prob / torch.sum(prob, dim=-1, keepdim=True)
     # top-p filtering
     sorted_prob, original_indices = torch.sort(prob, dim=-1, descending=True)
     remove_indices = torch.cumsum(sorted_prob, dim=-1) >= p
