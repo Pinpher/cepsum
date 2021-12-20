@@ -15,6 +15,7 @@ parser.add_argument('--embedding_dict', type=str, default="./model/model_only_co
 parser.add_argument('--input_path', type=str, default="./data/cut_test.txt")
 parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_test.txt")
 parser.add_argument('--attri_words_path', type=str, default='./vocab/attr_words.txt')
+parser.add_argument('--hidden_size', type=int, default=512)
 args = parser.parse_args()
 
 
@@ -51,7 +52,7 @@ def main():
     model = Mymodel(
         batch_size = 32,
         embed_dim = 300,
-        hidden_size = 512,
+        hidden_size = args.hidden_size,
         device = "cuda",
         attri_words_path = args.attri_words_path
     )
