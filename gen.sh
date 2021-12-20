@@ -1,3 +1,3 @@
 #!/bin/bash
 module load anaconda
-python train.py
+python gen.py
