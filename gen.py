@@ -10,10 +10,10 @@ from mymodel import *
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_final_1")
+parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_8")
 parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
 parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_valid.txt")
-parser.add_argument('--attri_words_path', type=str, default='./vocab/simple_attr_words.txt')
+parser.add_argument('--attri_words_path', type=str, default='./vocab/attr_words.txt')
 parser.add_argument('--hidden_size', type=int, default=512)
 args = parser.parse_args()
 

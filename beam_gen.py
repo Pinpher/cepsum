@@ -12,13 +12,13 @@ from mymodel import *
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_final_1")
+parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_8")
 parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
-parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_final_valid.txt")
-parser.add_argument('--attri_words_path', type=str, default='./vocab/simple_attr_words.txt')
+parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_valid.txt")
+parser.add_argument('--attri_words_path', type=str, default='./vocab/attr_words.txt')
 parser.add_argument('--hidden_size', type=int, default=512)
 parser.add_argument('--beam_size', type=int, default=5)
-parser.add_argument('--min_length', type=int, default=48)
+parser.add_argument('--min_length', type=int, default=32)
 args = parser.parse_args()
 
 
@@ -35,23 +35,6 @@ def decode_step(model, hidden, cell, last_word, input_mask, input_h, candidate_m
         return probs, hidden, cell, alpha, ct
     else:
         return 0, hidden, cell, alpha, ct
-
-def filtering(prob, k=25, p=0.8):
-    # top-k filtering
-    if k > 0:
-        indices_to_remove = prob < torch.topk(prob, k)[0][..., -1, None]
-        prob[indices_to_remove] = 0
-        prob = prob / torch.sum(prob, dim=-1, keepdim=True)
-    # top-p filtering
-    sorted_prob, original_indices = torch.sort(prob, dim=-1, descending=True)
-    remove_indices = torch.cumsum(sorted_prob, dim=-1) >= p
-    remove_indices[0], remove_indices[1:] = False, remove_indices[:-1].clone()
-    original_remove_indices = torch.zeros_like(prob, dtype=torch.bool) \
-        .scatter_(dim=-1, index=original_indices, src=remove_indices)
-    prob[original_remove_indices] = 0
-    prob = prob / torch.sum(prob, dim=-1, keepdim=True)
-    # return prob distribution
-    return prob
 
 def main():
     model = Mymodel(
@@ -231,8 +214,7 @@ def main():
                 finished_cnt = sum(finished)
                 if all(finished):
                     break
-            print(last_gen_str)
-            #fout.write(random.choice(last_gen_str).strip("[SEP]") + "\n")
+            fout.write(random.choice(last_gen_str).strip("[SEP]") + "\n")
             
     fout.close()
     
