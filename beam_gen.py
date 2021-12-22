@@ -18,6 +18,7 @@ parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_fin
 parser.add_argument('--attri_words_path', type=str, default='./vocab/simple_attr_words.txt')
 parser.add_argument('--hidden_size', type=int, default=512)
 parser.add_argument('--beam_size', type=int, default=5)
+parser.add_argument('--min_length', type=int, default=48)
 args = parser.parse_args()
 
 
@@ -191,18 +192,24 @@ def main():
                     cur_probs[idx] = cur_probs[idx].reshape(-1) # (candidate_size)
                 
                 flatten_probs = torch.cat(cur_probs[finished_cnt:])        # unfinished * candidate_size
-                _, indices = torch.topk(flatten_probs, args.beam_size - finished_cnt)
+                _, indices = torch.topk(flatten_probs, 2 * (args.beam_size - finished_cnt))
                 new_probs = []
                 new_words = []
                 new_gen_str = []
                 new_finished = []
+                cur_add_num = 0
                 for index in indices:
                     x = index // model.candidate_size + finished_cnt
                     y = index % model.candidate_size
+                    if model.embedding_tgt.getWord(y) == "[SEP]" and len(last_gen_str[x]) < args.min_length:
+                        continue
+                    cur_add_num += 1
                     new_probs.append(cur_probs[x][y].cpu().item())
                     new_words.append(model.embedding_tgt.getWord(y))
                     new_gen_str.append(last_gen_str[x] + new_words[-1])
                     new_finished.append(new_words[-1] == "[SEP]")
+                    if cur_add_num == args.beam_size - finished_cnt:
+                        break
                 # keep the finished part
                 last_probs = last_probs[:finished_cnt]
                 last_words = last_words[:finished_cnt]
