@@ -47,6 +47,7 @@ def main():
     if args.resume:
         model.load_state_dict(torch.load(args.resume))
         model.embedding.embedding.load_state_dict(torch.load(args.resume + "_embedding"))
+        model.embedding_tgt.embedding.load_state_dict(torch.load(args.resume + "_embedding_tgt"))
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0)
@@ -77,6 +78,7 @@ def main():
         path = os.path.join(model_save_path, "model_%s_%d" % (name, epoch))
         torch.save(model.state_dict(), path)
         torch.save(model.embedding.embedding.state_dict(), path + "_embedding")
+        torch.save(model.embedding_tgt.embedding.state_dict(), path + "_embedding_tgt")
 
 if __name__ == "__main__":
     main()

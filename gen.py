@@ -10,11 +10,11 @@ from mymodel import *
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_8")
-parser.add_argument('--embedding_dict', type=str, default="./model/model_only_copy_8_embedding")
-parser.add_argument('--input_path', type=str, default="./data/cut_test.txt")
-parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_test.txt")
-parser.add_argument('--attri_words_path', type=str, default='./vocab/attr_words.txt')
+parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_final_1")
+parser.add_argument('--embedding_dict', type=str, default="./model/model_only_copy_final_1_embedding")
+parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
+parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_valid.txt")
+parser.add_argument('--attri_words_path', type=str, default='./vocab/simple_attr_words.txt')
 parser.add_argument('--hidden_size', type=int, default=512)
 args = parser.parse_args()
 
@@ -33,7 +33,7 @@ def decode_step(model, hidden, cell, last_word, input_mask, input_h, candidate_m
     else:
         return 0, hidden, cell, alpha, ct
 
-def filtering(prob, k=50, p=0.8):
+def filtering(prob, k=25, p=0.8):
     # top-k filtering
     if k > 0:
         indices_to_remove = prob < torch.topk(prob, k)[0][..., -1, None]
@@ -169,7 +169,7 @@ def main():
                 probs_copy = gamma_t * probs_copy_x + (torch.ones(gamma_t.shape).to(model.device) - gamma_t) * probs_copy_v                                     # (batch_size, candidate_size)
 
                 lambda_t = torch.sigmoid(model.w_e(c_x) + model.u_e(hidden_s) + model.v_e(model.embedding.embed([[last_word]])[0][0]))                          # (batch_size, 1)
-                probs = lambda_t * probs_gen +  (torch.ones(lambda_t.shape).to(model.device) - lambda_t) * probs_copy                                           # (batch_size, candidate_size)
+                probs = lambda_t * probs_gen + (torch.ones(lambda_t.shape).to(model.device) - lambda_t) * probs_copy                                           # (batch_size, candidate_size)
 
                 # final probs
                 index = filtering(probs.squeeze(0).detach())

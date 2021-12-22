@@ -16,6 +16,7 @@ class Mymodel(nn.Module):
         self.device = device
 
         self.embedding = MyEmbedding(self.device)
+        self.embedding_tgt = MyEmbedding(self.device)
         self.candidate_size = self.embedding.vocabSize()
 
         self.k_encoder = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, bidirectional=True)
@@ -43,7 +44,7 @@ class Mymodel(nn.Module):
         self.u_e = nn.Linear(hidden_size, 1, bias=False)
         self.v_e = nn.Linear(embed_dim, 1, bias=False)
 
-        self.dropout = nn.Dropout(p=0.2)
+        self.dropout = nn.Dropout(p=0.3)
 
         attr_file = open(attri_words_path, "r", encoding='utf-8')
         attr_words = attr_file.readlines()                              # (attr_word_num)
@@ -69,7 +70,7 @@ class Mymodel(nn.Module):
         k_embedding, k_mask, k_indices = self.embedding.embed(key_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
         v_embedding, v_mask, v_indices = self.embedding.embed(value_batch)  # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
         s_embedding, s_mask, s_indices = self.embedding.embed(src_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
-        t_embedding, t_mask, t_indices = self.embedding.embed(tgt_batch)    # (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
+        t_embedding, t_mask, t_indices = self.embedding_tgt.embed(tgt_batch)# (max_length, batch_size, embed_dim), (max_length, batch_size, 1), (max_length, batch_size)
 
         # Encode
         h_k, state_k = self.k_encoder(k_embedding)              # (max_length, batch_size, hidden_size * 2)
@@ -156,7 +157,7 @@ class Mymodel(nn.Module):
         p_copy = gamma_t * p_copy_x + (torch.ones(gamma_t.shape).to(self.device) - gamma_t) * p_copy_v  # (max_tgt_len, batch_size, candidate_size)
 
         lambda_t = torch.sigmoid(self.w_e(c_x) + self.u_e(s_x) + self.v_e(t_embedding))                 # (max_tgt_len, batch_size, 1)
-        p = lambda_t * p_gen +  (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)
+        p = lambda_t * p_gen + (torch.ones(lambda_t.shape).to(self.device) - lambda_t) * p_copy        # (max_tgt_len, batch_size, candidate_size)
 
         # loss
         loss = torch.zeros(self.batch_size).to(self.device)
