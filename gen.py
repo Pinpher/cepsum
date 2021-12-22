@@ -11,7 +11,6 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_final_1")
-parser.add_argument('--embedding_dict', type=str, default="./model/model_only_copy_final_1_embedding")
 parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
 parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_valid.txt")
 parser.add_argument('--attri_words_path', type=str, default='./vocab/simple_attr_words.txt')
@@ -20,10 +19,10 @@ args = parser.parse_args()
 
 
 def decode_step(model, hidden, cell, last_word, input_mask, input_h, candidate_mask):
-    alpha = [model.u_a(torch.tanh(model.w_a(h_i) + model.v_a(hidden))) for h_i in input_h]  # (max_length, batch_size, 1)
-    alpha = F.softmax(torch.stack(alpha).to(model.device) * input_mask, dim=0)              # (max_length, batch_size, 1)
-    ct = torch.sum(alpha * input_h, dim=0)                                                  # (batch_size, hidden_size * 2)
-    hidden, cell = model.decoder(model.embedding.embed([[last_word]])[0][0], (hidden, cell))   # (batch_size, hidden_size)
+    alpha = [model.u_a(torch.tanh(model.w_a(h_i) + model.v_a(hidden))) for h_i in input_h]          # (max_length, batch_size, 1)
+    alpha = F.softmax(torch.stack(alpha).to(model.device) * input_mask, dim=0)                      # (max_length, batch_size, 1)
+    ct = torch.sum(alpha * input_h, dim=0)                                                          # (batch_size, hidden_size * 2)
+    hidden, cell = model.decoder(model.embedding_tgt.embed([[last_word]])[0][0], (hidden, cell))    # (batch_size, hidden_size)
     
     if candidate_mask != None:
         logits = model.u_b(model.dropout(torch.tanh(model.w_b(hidden) + model.v_b(ct))))
@@ -59,7 +58,8 @@ def main():
         attri_words_path = args.attri_words_path
     )
     model.load_state_dict(torch.load(args.module_dict))
-    model.embedding.embedding.load_state_dict(torch.load(args.embedding_dict))
+    model.embedding.embedding.load_state_dict(torch.load(args.module_dict + "_embedding"))
+    model.embedding_tgt.embedding.load_state_dict(torch.load(args.module_dict + "_embedding_tgt"))
     model.to("cuda")
     model.eval()
 
@@ -165,15 +165,15 @@ def main():
                     probs_copy_v[0, index.long()] += (alpha_k[attr_i][0].squeeze(-1) * mask_k) * (alpha_v[i][0].squeeze(-1) * mask_v)    # (batch_size, candidate_size)
                     attr_j += 1
 
-                gamma_t = torch.sigmoid(model.w_d(c_k) + model.w_d(c_x) + model.u_d(hidden_s) + model.v_d(model.embedding.embed([[last_word]])[0][0]))          # (batch_size, 1)
+                gamma_t = torch.sigmoid(model.w_d(c_k) + model.w_d(c_x) + model.u_d(hidden_s) + model.v_d(model.embedding_tgt.embed([[last_word]])[0][0]))          # (batch_size, 1)
                 probs_copy = gamma_t * probs_copy_x + (torch.ones(gamma_t.shape).to(model.device) - gamma_t) * probs_copy_v                                     # (batch_size, candidate_size)
 
-                lambda_t = torch.sigmoid(model.w_e(c_x) + model.u_e(hidden_s) + model.v_e(model.embedding.embed([[last_word]])[0][0]))                          # (batch_size, 1)
+                lambda_t = torch.sigmoid(model.w_e(c_x) + model.u_e(hidden_s) + model.v_e(model.embedding_tgt.embed([[last_word]])[0][0]))                          # (batch_size, 1)
                 probs = lambda_t * probs_gen + (torch.ones(lambda_t.shape).to(model.device) - lambda_t) * probs_copy                                           # (batch_size, candidate_size)
 
                 # final probs
                 index = filtering(probs.squeeze(0).detach())
-                last_word = model.embedding.getWord(index)
+                last_word = model.embedding_tgt.getWord(index)
                 if last_word  == "[SEP]":
                     break
                 if last_word  == "[UNK]":
