@@ -14,7 +14,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_final_1")
 parser.add_argument('--input_path', type=str, default="./data/cut_valid.txt")
-parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_valid.txt")
+parser.add_argument('--output_path', type=str, default="./data/gen_only_copy_final_valid.txt")
 parser.add_argument('--attri_words_path', type=str, default='./vocab/simple_attr_words.txt')
 parser.add_argument('--hidden_size', type=int, default=512)
 parser.add_argument('--beam_size', type=int, default=5)
@@ -62,7 +62,7 @@ def main():
     )
     model.load_state_dict(torch.load(args.module_dict))
     model.embedding.embedding.load_state_dict(torch.load(args.module_dict + "_embedding"))
-    model.embedding_tgt.embedding.load_state_dict(torch.load(args.module_dict + "_embedding_tgt"))
+    model.embedding_tgt.embedding.load_state_dict(torch.load(args.module_dict + "_embedding"))
     model.to("cuda")
     model.eval()
 
@@ -187,7 +187,7 @@ def main():
                 for idx, last_prob in enumerate(last_probs):
                     if finished[idx]:
                         continue
-                    cur_probs[idx] = cur_probs[idx] * last_prob
+                    #cur_probs[idx] = cur_probs[idx] * last_prob
                     cur_probs[idx] = cur_probs[idx].reshape(-1) # (candidate_size)
                 
                 flatten_probs = torch.cat(cur_probs[finished_cnt:])        # unfinished * candidate_size
@@ -209,22 +209,23 @@ def main():
                 last_gen_str = last_gen_str[:finished_cnt]
                 finished = finished[:finished_cnt]
                 # add new part
-                for idx, finish_flag in new_finished:
+                for idx, finish_flag in enumerate(new_finished):
                     if finish_flag:
-                        last_probs.append(new_probs[i])
-                        last_words.append(new_words[i])
-                        last_gen_str.append(new_gen_str[i])
+                        last_probs.append(new_probs[idx])
+                        last_words.append(new_words[idx])
+                        last_gen_str.append(new_gen_str[idx])
                         finished.append(finish_flag)
-                for idx, finish_flag in new_finished:
+                for idx, finish_flag in enumerate(new_finished):
                     if not finish_flag:
-                        last_probs.append(new_probs[i])
-                        last_words.append(new_words[i])
-                        last_gen_str.append(new_gen_str[i])
+                        last_probs.append(new_probs[idx])
+                        last_words.append(new_words[idx])
+                        last_gen_str.append(new_gen_str[idx])
                         finished.append(finish_flag)
+                finished_cnt = sum(finished)
                 if all(finished):
                     break
-            #print(gen_str)
-            fout.write(random.choice(last_gen_str).strip("[SEP]") + "\n")
+            print(last_gen_str)
+            #fout.write(random.choice(last_gen_str).strip("[SEP]") + "\n")
             
     fout.close()
     
