@@ -26,8 +26,8 @@ def cut(ipath, opath):
     return
 
 def main():
-    input_files = ["../data/train.jsonl", "../data/val.jsonl", "../data/test_public.jsonl"]
-    output_files = ["../data/cut_train.txt", "../data/cut_val.txt", "../data/cut_test.txt"]
+    input_files = ["./data/train.jsonl", "./data/val.jsonl", "./data/test_public.jsonl"]
+    output_files = ["./data/cut_train.txt", "./data/cut_val.txt", "./data/cut_test.txt"]
     for i in range(len(input_files)):
         cut(input_files[i], output_files[i])
 
