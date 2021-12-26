@@ -1,5 +1,4 @@
 import json
-import argparse
 import sys
 from rouge import Rouge
 import numpy as np

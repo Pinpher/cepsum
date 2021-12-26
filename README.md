@@ -2,7 +2,7 @@
 
 这是一份清华大学2021年人工神经网络课程Cepsum比赛项目代码
 
-本项目基于pytorch实现，在requirements.txt中列举了所有依赖
+本项目基于pytorch实现，在requirements.txt中列举了部分重要依赖
 
 Report已经包含了详细的模型解释与实验结果，这里只解释代码运行过程
 
