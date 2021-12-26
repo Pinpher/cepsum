@@ -3,7 +3,6 @@ import json
 import argparse
 from torch.nn.functional import embedding
 from torch.utils.data import DataLoader
-from myvocabulary import *
 from myembedding import *
 from mydataset import *
 from mymodel import *
@@ -32,7 +31,7 @@ def decode_step(model, hidden, cell, last_word, input_mask, input_h, candidate_m
     else:
         return 0, hidden, cell, alpha, ct
 
-def filtering(prob, k=25, p=0.8):
+def filtering(prob, k=1, p=1):
     # top-k filtering
     if k > 0:
         indices_to_remove = prob < torch.topk(prob, k)[0][..., -1, None]

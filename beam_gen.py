@@ -5,7 +5,6 @@ import argparse
 import random
 from torch.nn.functional import embedding
 from torch.utils.data import DataLoader
-from myvocabulary import *
 from myembedding import *
 from mydataset import *
 from mymodel import *
