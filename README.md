@@ -2,13 +2,15 @@
 
 这是一份清华大学2021年人工神经网络课程Cepsum比赛项目代码
 
+本项目基于pytorch实现，在requirements.txt中列举了所有依赖
+
 Report已经包含了详细的模型解释与实验结果，这里只解释代码运行过程
 
 #### 数据准备：
 
 - 分词方法： `python cut.py`
 
-  - 对提供的train.jsonl，val.jsonl，test_public进行jieba分词
+  - 对提供的train.jsonl，val.jsonl，test_public.jsonl进行jieba分词
 
   - 需要将上述文件放置在./data路径下
 
@@ -42,7 +44,7 @@ Report已经包含了详细的模型解释与实验结果，这里只解释代�
 
 - 生成方法：`python gen.py` 或 `python beam_gen.py`，需附加生成参数
 
-  - `gen.py`生成参数
+  - gen.py生成参数
 
   ```python
   parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_8") # 加载模型路径
@@ -52,7 +54,7 @@ Report已经包含了详细的模型解释与实验结果，这里只解释代�
   parser.add_argument('--hidden_size', type=int, default=512) # 模型内LSTM隐藏状态维度
   ```
 
-  - `beam_gen.py`生成参数：
+  - beam_gen.py生成参数：
 
   ```python
   parser.add_argument('--module_dict', type=str, default="./model/model_only_copy_8") # 加载模型路径
@@ -66,7 +68,7 @@ Report已经包含了详细的模型解释与实验结果，这里只解释代�
 
 - 上述过程输出一个把摘要按行排列的txt文件，将其转换为jsonl文件方法为：`python gen_json_for_eval.py`，需附加转换参数
 
-  - `gen_json_for_eval.py`转换参数：
+  - gen_json_for_eval.py转换参数：
 
   ```python
   parser.add_argument('--format_path', type=str, default='./data/valid.jsonl') # 目标格式的jsonl文件
